@@ -78,6 +78,9 @@
             <button type="button" id="importCsvBtn" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-indigo-200 hover:text-indigo-700">
               Import CSV
             </button>
+            <span id="saveStatus" class="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Offline / Local Only
+            </span>
             <input id="csvFileInput" type="file" accept=".csv,text/csv" class="hidden" />
           </div>
         </div>
@@ -313,7 +316,8 @@
         ]
       });
 
-      let state = loadState();
+      let state = defaultState();
+      let saveTimer = null;
 
       function createId() {
         return `id-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
@@ -356,7 +360,7 @@
         };
       }
 
-      function loadState() {
+      function loadLocalState() {
         try {
           const raw = localStorage.getItem(STORAGE_KEY);
           if (!raw) return defaultState();
@@ -370,13 +374,79 @@
             debt: Array.isArray(parsed.debt) ? parsed.debt.map(normalizeDebt) : defaultState().debt,
           };
         } catch (error) {
-          console.warn('Failed to load saved state. Falling back to defaults.', error);
+          console.warn('Failed to load saved local state. Falling back to defaults.', error);
           return defaultState();
         }
       }
 
-      function saveState() {
+      function saveLocalState() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+
+      function saveState() {
+        saveLocalState();
+      }
+
+      function setStatus(message) {
+        const indicator = document.getElementById('saveStatus');
+        if (!indicator) return;
+        indicator.textContent = message;
+      }
+
+      async function loadBudgetDataFromServer() {
+        try {
+          const response = await fetch('/api/load', { cache: 'no-store' });
+          if (!response.ok) {
+            throw new Error(`Server load failed with status ${response.status}`);
+          }
+          const payload = await response.json();
+          state = {
+            startingBalance: normalizeNumber(payload.startingBalance, 0),
+            income: Array.isArray(payload.income) ? payload.income.map(normalizeRow) : defaultState().income,
+            expenses: Array.isArray(payload.expenses) ? payload.expenses.map(normalizeRow) : defaultState().expenses,
+            expenseTransfers: Array.isArray(payload.expenseTransfers) ? payload.expenseTransfers.map(normalizeRow) : defaultState().expenseTransfers,
+            transfers: Array.isArray(payload.transfers) ? payload.transfers.map(normalizeTransfer) : defaultState().transfers,
+            debt: Array.isArray(payload.debt) ? payload.debt.map(normalizeDebt) : defaultState().debt,
+          };
+          saveLocalState();
+          setStatus('Saved to disk');
+        } catch (error) {
+          console.warn('Server data unavailable. Falling back to localStorage.', error);
+          state = loadLocalState();
+          setStatus('Offline / Local Only');
+        }
+      }
+
+      async function saveBudgetToServer() {
+        try {
+          setStatus('Saving...');
+          const response = await fetch('/api/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(state)
+          });
+          if (!response.ok) {
+            throw new Error(`Save failed with status ${response.status}`);
+          }
+          saveLocalState();
+          setStatus('Saved to disk');
+        } catch (error) {
+          console.warn('Server save failed. Saving locally only.', error);
+          saveLocalState();
+          setStatus('Offline / Local Only');
+        }
+      }
+
+      function scheduleSave() {
+        window.clearTimeout(saveTimer);
+        setStatus('Saving...');
+        saveTimer = window.setTimeout(() => {
+          saveBudgetToServer();
+        }, 1000);
+      }
+
+      function loadState() {
+        return loadLocalState();
       }
 
       function formatCurrency(value) {
@@ -1022,6 +1092,7 @@
 
         saveState();
         renderAll();
+        scheduleSave();
       }
 
       function renderTabs() {
@@ -1312,7 +1383,9 @@
         saveState();
       }, true);
 
-      renderAll();
+      loadBudgetDataFromServer().finally(() => {
+        renderAll();
+      });
     </script>
   </body>
 </html>

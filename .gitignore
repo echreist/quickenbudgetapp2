@@ -2,3 +2,7 @@ _debug_script.js
 *.log
 .DS_Store
 .vscode/
+
+# Local budget data and server-generated backup files
+budget_data.json
+backups/
