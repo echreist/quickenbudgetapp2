@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monthly Budget & Financial Projection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+      }
+
+      .table-cell-input {
+        @apply w-full min-w-0 rounded-md border border-slate-200 bg-white px-2 py-1.5 pr-2 text-right text-sm font-mono tabular-nums text-slate-700 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100;
+      }
+
+      .table-cell-name {
+        @apply w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-left text-sm text-slate-700 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100;
+      }
+
+      .numeric-column-cell {
+        @apply w-32 min-w-[8rem] px-2 py-2 pr-2 text-right align-middle;
+      }
+
+      .currency {
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen text-slate-800 antialiased">
+    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <header class="mb-6 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur sm:p-5">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600">Quarterly planning</p>
+            <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">Monthly Budget & Financial Projection</h1>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" id="exportCsvBtn" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-indigo-200 hover:text-indigo-700">
+              Export to CSV
+            </button>
+            <button type="button" id="importCsvBtn" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-indigo-200 hover:text-indigo-700">
+              Import CSV
+            </button>
+            <input id="csvFileInput" type="file" accept=".csv,text/csv" class="hidden" />
+          </div>
+        </div>
+      </header>
+
+      <nav class="mb-6 flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+        <button type="button" data-tab="dashboard" class="tab-button rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500">Budget Dashboard</button>
+        <button type="button" data-tab="transfers" class="tab-button rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200">Transfers & Projection</button>
+        <button type="button" data-tab="debt" class="tab-button rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200">Debt & Balance Tracker</button>
+      </nav>
+
+      <main>
+        <section id="tab-dashboard" class="tab-panel space-y-6">
+          <div id="summaryCards" class="grid gap-4 md:grid-cols-2 xl:grid-cols-5"></div>
+
+          <div class="space-y-6">
+            <section class="w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div class="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h2 class="text-lg font-bold text-slate-900">Income</h2>
+                  <p class="text-xs text-slate-500">Actual, forecast, and budget target</p>
+                </div>
+                <button type="button" data-section="income" class="add-row-btn inline-flex items-center rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500">+ Add New Category</button>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="min-w-[980px] w-full border-separate border-spacing-y-2 text-sm">
+                  <thead>
+                    <tr class="text-left text-xs uppercase tracking-wide text-slate-500">
+                      <th class="px-2 py-2 text-left font-semibold">Category Name</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Actual ($)</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Speculation ($)</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Budget ($)</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Diff (Actual vs Budget)</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Diff (Actual vs Speculation)</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Diff (Speculation vs Budget)</th>
+                      <th class="px-2 py-2 text-center font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="incomeTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div class="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h2 class="text-lg font-bold text-slate-900">Expenses</h2>
+                  <p class="text-xs text-slate-500">Current spending versus monthly target</p>
+                </div>
+                <button type="button" data-section="expenses" class="add-row-btn inline-flex items-center rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-500">+ Add New Category</button>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="min-w-[980px] w-full border-separate border-spacing-y-2 text-sm">
+                  <thead>
+                    <tr class="text-left text-xs uppercase tracking-wide text-slate-500">
+                      <th class="px-2 py-2 text-left font-semibold">Category Name</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Actual ($)</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Speculation ($)</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Budget ($)</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Diff (Actual vs Budget)</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Diff (Actual vs Speculation)</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Diff (Speculation vs Budget)</th>
+                      <th class="px-2 py-2 text-center font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="expensesTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div class="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h2 class="text-lg font-bold text-slate-900">Expense - Transfers</h2>
+                  <p class="text-xs text-slate-500">Dedicated transfer expenses and scheduled allocations</p>
+                </div>
+                <button type="button" data-section="expenseTransfers" class="add-row-btn inline-flex items-center rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-500">+ Add Transfer Category</button>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="min-w-[980px] w-full border-separate border-spacing-y-2 text-sm">
+                  <thead>
+                    <tr class="text-left text-xs uppercase tracking-wide text-slate-500">
+                      <th class="px-2 py-2 text-left font-semibold">Category Name</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Actual ($)</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Speculation ($)</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Budget ($)</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Diff Actual &amp; Budget</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Diff Actual &amp; Speculation</th>
+                      <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Diff Speculation &amp; Budget</th>
+                      <th class="px-2 py-2 text-center font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="expenseTransfersTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="tab-transfers" class="tab-panel hidden space-y-6">
+          <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div class="mb-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h2 class="text-lg font-bold text-slate-900">Starting Balance & Cash Flow Projection</h2>
+                <p class="text-xs text-slate-500">Project month-end availability based on actual, forecast, and transfer activity.</p>
+              </div>
+              <div class="w-full max-w-xs">
+                <label for="startingBalance" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Starting Balance ($)</label>
+                <input id="startingBalance" type="number" step="0.01" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 pr-2 text-right text-base font-mono tabular-nums text-slate-800 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-2">
+              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Actual to Date Balance</p>
+                <p id="actualBalanceValue" class="mt-3 text-3xl font-bold tracking-tight text-slate-900 currency"></p>
+              </div>
+              <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Speculated Month-End Projected Balance</p>
+                <p id="projectedBalanceValue" class="mt-3 text-3xl font-bold tracking-tight text-indigo-900 currency"></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div class="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 class="text-lg font-bold text-slate-900">Transfers</h2>
+                <p class="text-xs text-slate-500">Savings, retirement, family transfers, and debt payments.</p>
+              </div>
+              <button type="button" id="addTransferBtn" class="inline-flex items-center rounded-lg bg-sky-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-500">+ Add Transfer</button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="min-w-full border-separate border-spacing-y-2 text-sm">
+                <thead>
+                  <tr class="text-left text-xs uppercase tracking-wide text-slate-500">
+                    <th class="px-2 py-2 text-left font-semibold">Transfer Name</th>
+                    <th class="px-2 py-2 text-left font-semibold">Direction</th>
+                    <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Amount ($)</th>
+                    <th class="px-2 py-2 text-center font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="transfersTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section id="tab-debt" class="tab-panel hidden space-y-6">
+          <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div class="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 class="text-lg font-bold text-slate-900">Debt & Balance Tracker</h2>
+                <p class="text-xs text-slate-500">Snowball, amortization, and payoff planning.</p>
+              </div>
+              <button type="button" id="addDebtBtn" class="inline-flex items-center rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-500">+ Add Creditor</button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="min-w-full border-separate border-spacing-y-2 text-sm">
+                <thead>
+                  <tr class="text-left text-xs uppercase tracking-wide text-slate-500">
+                    <th class="px-2 py-2 text-left font-semibold">Creditor</th>
+                    <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Balance ($)</th>
+                    <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Interest Rate (%)</th>
+                    <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Minimum Payment ($)</th>
+                    <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Payment This Month ($)</th>
+                    <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Order to Pay Off</th>
+                    <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Monthly Interest Cost</th>
+                    <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Projected Months to Payoff</th>
+                    <th class="px-2 py-2 text-left font-semibold">Notes</th>
+                    <th class="px-2 py-2 text-center font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="debtTableBody"></tbody>
+              </table>
+            </div>
+
+            <div id="debtSummary" class="mt-5 grid gap-4 md:grid-cols-3"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const STORAGE_KEY = 'quicken-budget-app-v1';
+
+      const defaultState = () => ({
+        startingBalance: 5400,
+        income: [
+          { id: createId(), name: 'Salary', actual: 4300, speculation: 4300, budget: 4300 },
+          { id: createId(), name: 'Freelance', actual: 450, speculation: 600, budget: 500 },
+          { id: createId(), name: 'Interest', actual: 60, speculation: 75, budget: 80 }
+        ],
+        expenses: [
+          { id: createId(), name: 'Housing', actual: 1750, speculation: 1800, budget: 1850 },
+          { id: createId(), name: 'Groceries', actual: 620, speculation: 680, budget: 700 },
+          { id: createId(), name: 'Utilities', actual: 320, speculation: 350, budget: 340 },
+          { id: createId(), name: 'Dining', actual: 280, speculation: 320, budget: 350 },
+          { id: createId(), name: 'Auto', actual: 420, speculation: 450, budget: 430 },
+          { id: createId(), name: 'Healthcare', actual: 260, speculation: 300, budget: 330 },
+          { id: createId(), name: 'Loans', actual: 340, speculation: 360, budget: 350 }
+        ],
+        expenseTransfers: [
+          { id: createId(), name: 'To HSA', actual: 0, speculation: 0, budget: 0 },
+          { id: createId(), name: 'To Flex Spending', actual: 0, speculation: 0, budget: 0 },
+          { id: createId(), name: 'To Will\'s Checking', actual: 0, speculation: 0, budget: 0 },
+          { id: createId(), name: 'To Jenna\'s Checking', actual: 0, speculation: 0, budget: 0 },
+          { id: createId(), name: 'To Rita\'s Checking', actual: 0, speculation: 0, budget: 0 },
+          { id: createId(), name: 'To Amazon', actual: 0, speculation: 0, budget: 0 },
+          { id: createId(), name: 'To Blue Cash Everyday', actual: 0, speculation: 0, budget: 0 },
+          { id: createId(), name: 'To Camper Loan', actual: 0, speculation: 0, budget: 0 },
+          { id: createId(), name: 'To Citi Costco', actual: 0, speculation: 0, budget: 0 },
+          { id: createId(), name: 'To Escrow', actual: 0, speculation: 0, budget: 0 },
+          { id: createId(), name: 'To Home Loan', actual: 0, speculation: 0, budget: 0 },
+          { id: createId(), name: 'To Sofi Personal Loan', actual: 0, speculation: 0, budget: 0 },
+          { id: createId(), name: 'To Windows LLC', actual: 0, speculation: 0, budget: 0 },
+          { id: createId(), name: 'To Empower Retirement', actual: 0, speculation: 0, budget: 0 }
+        ],
+        transfers: [
+          { id: createId(), name: 'Emergency Fund', amount: 350, direction: 'outgoing' },
+          { id: createId(), name: '401(k)', amount: 450, direction: 'outgoing' },
+          { id: createId(), name: 'Family Support', amount: 150, direction: 'incoming' }
+        ],
+        debt: [
+          { id: createId(), creditor: 'Visa', balance: 4200, rate: 18.9, minPayment: 125, paymentThisMonth: 180, order: 1, notes: 'High-interest card' },
+          { id: createId(), creditor: 'Auto Loan', balance: 9800, rate: 4.7, minPayment: 250, paymentThisMonth: 260, order: 2, notes: 'Vehicle payoff' },
+          { id: createId(), creditor: 'Student Loan', balance: 14200, rate: 3.8, minPayment: 210, paymentThisMonth: 240, order: 3, notes: 'Federal loan' }
+        ]
+      });
+
+      let state = loadState();
+
+      function createId() {
+        return `id-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+      }
+
+      function normalizeNumber(value, fallback = 0) {
+        const numeric = Number.parseFloat(value);
+        return Number.isFinite(numeric) ? numeric : fallback;
+      }
+
+      function normalizeRow(row) {
+        return {
+          id: row.id || createId(),
+          name: row.name || 'New Category',
+          actual: normalizeNumber(row.actual),
+          speculation: normalizeNumber(row.speculation),
+          budget: normalizeNumber(row.budget)
+        };
+      }
+
+      function normalizeTransfer(row) {
+        return {
+          id: row.id || createId(),
+          name: row.name || 'New Transfer',
+          amount: normalizeNumber(row.amount),
+          direction: row.direction === 'incoming' ? 'incoming' : 'outgoing'
+        };
+      }
+
+      function normalizeDebt(row) {
+        return {
+          id: row.id || createId(),
+          creditor: row.creditor || 'New Creditor',
+          balance: normalizeNumber(row.balance),
+          rate: normalizeNumber(row.rate),
+          minPayment: normalizeNumber(row.minPayment),
+          paymentThisMonth: normalizeNumber(row.paymentThisMonth),
+          order: normalizeNumber(row.order, 1),
+          notes: row.notes || '',
+        };
+      }
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return defaultState();
+          const parsed = JSON.parse(raw);
+          return {
+            startingBalance: normalizeNumber(parsed.startingBalance, 0),
+            income: Array.isArray(parsed.income) ? parsed.income.map(normalizeRow) : defaultState().income,
+            expenses: Array.isArray(parsed.expenses) ? parsed.expenses.map(normalizeRow) : defaultState().expenses,
+            expenseTransfers: Array.isArray(parsed.expenseTransfers) ? parsed.expenseTransfers.map(normalizeRow) : defaultState().expenseTransfers,
+            transfers: Array.isArray(parsed.transfers) ? parsed.transfers.map(normalizeTransfer) : defaultState().transfers,
+            debt: Array.isArray(parsed.debt) ? parsed.debt.map(normalizeDebt) : defaultState().debt,
+          };
+        } catch (error) {
+          console.warn('Failed to load saved state. Falling back to defaults.', error);
+          return defaultState();
+        }
+      }
+
+      function saveState() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+
+      function formatCurrency(value) {
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          maximumFractionDigits: 2,
+          minimumFractionDigits: 0
+        }).format(Number(value) || 0);
+      }
+
+      function toNumber(value) {
+        return Number.parseFloat(value) || 0;
+      }
+
+      function getSectionTotals(section) {
+        const rows = state[section] || [];
+        return rows.reduce(
+          (acc, row) => {
+            acc.actual += Number(row.actual) || 0;
+            acc.speculation += Number(row.speculation) || 0;
+            acc.budget += Number(row.budget) || 0;
+            return acc;
+          },
+          { actual: 0, speculation: 0, budget: 0 }
+        );
+      }
+
+      function getNetTotals() {
+        const income = getSectionTotals('income');
+        const expenses = getSectionTotals('expenses');
+        const expenseTransfers = getSectionTotals('expenseTransfers');
+        return {
+          actual: income.actual - expenses.actual,
+          speculation: income.speculation - expenses.speculation,
+          budget: income.budget - expenses.budget,
+          actualAfterTransfers: income.actual - expenses.actual - expenseTransfers.actual,
+          speculationAfterTransfers: income.speculation - expenses.speculation - expenseTransfers.speculation,
+          budgetAfterTransfers: income.budget - expenses.budget - expenseTransfers.budget,
+          transferTotal: expenseTransfers,
+        };
+      }
+
+      function getTransferNetAmount(transfer) {
+        const amount = Number(transfer.amount) || 0;
+        return transfer.direction === 'incoming' ? -amount : amount;
+      }
+
+      function getTransferTotals() {
+        const totals = state.transfers.reduce(
+          (acc, transfer) => {
+            const net = getTransferNetAmount(transfer);
+            acc.actual += net;
+            acc.speculation += net;
+            acc.budget += net;
+            return acc;
+          },
+          { actual: 0, speculation: 0, budget: 0 }
+        );
+        return totals;
+      }
+
+      function calculateDiff(section, row, key) {
+        const type = section === 'income' ? 'income' : 'expense';
+
+        switch (key) {
+          case 'actualBudget':
+            return type === 'income' ? Number(row.actual) - Number(row.budget) : Number(row.budget) - Number(row.actual);
+          case 'actualSpeculation':
+            return Number(row.speculation) - Number(row.actual);
+          case 'speculationBudget':
+            return Number(row.budget) - Number(row.speculation);
+          default:
+            return 0;
+        }
+      }
+
+      function getDiffClass(value) {
+        return value >= 0 ? 'text-emerald-600' : 'text-rose-600';
+      }
+
+      function getSummaryValueClass(cardKey, value) {
+        if (cardKey === 'net' || cardKey === 'bottom-line') {
+          return value >= 0 ? 'text-emerald-600' : 'text-red-600';
+        }
+
+        return value < 0 ? 'text-red-600' : 'text-slate-800';
+      }
+
+      function renderSummaryCards() {
+        const income = getSectionTotals('income');
+        const expenses = getSectionTotals('expenses');
+        const expenseTransfers = getSectionTotals('expenseTransfers');
+        const net = getNetTotals();
+
+        const cards = [
+          {
+            title: 'Total Income',
+            key: 'income',
+            values: [
+              { label: 'Actual', value: income.actual },
+              { label: 'Speculation', value: income.speculation },
+              { label: 'Budget', value: income.budget }
+            ],
+            tone: 'bg-emerald-50 text-emerald-900 border-emerald-100'
+          },
+          {
+            title: 'Total Expenses',
+            key: 'expenses',
+            values: [
+              { label: 'Actual', value: expenses.actual },
+              { label: 'Speculation', value: expenses.speculation },
+              { label: 'Budget', value: expenses.budget }
+            ],
+            tone: 'bg-rose-50 text-rose-900 border-rose-100'
+          },
+          {
+            title: 'Total Transfers',
+            key: 'transfers',
+            values: [
+              { label: 'Actual', value: expenseTransfers.actual },
+              { label: 'Speculation', value: expenseTransfers.speculation },
+              { label: 'Budget', value: expenseTransfers.budget }
+            ],
+            tone: 'bg-cyan-50 text-cyan-900 border-cyan-100'
+          },
+          {
+            title: 'Income - Expense (not transfer)',
+            key: 'net',
+            values: [
+              { label: 'Actual', value: net.actual },
+              { label: 'Speculation', value: net.speculation },
+              { label: 'Budget', value: net.budget }
+            ],
+            tone: 'bg-sky-50 text-sky-900 border-sky-100'
+          },
+          {
+            title: 'Bottom Line',
+            key: 'bottom-line',
+            values: [
+              { label: 'Actual', value: net.actualAfterTransfers },
+              { label: 'Speculation', value: net.speculationAfterTransfers },
+              { label: 'Budget', value: net.budgetAfterTransfers }
+            ],
+            tone: 'bg-violet-50 text-violet-900 border-violet-100'
+          }
+        ];
+
+        const html = cards.map((card) => `
+          <div class="rounded-2xl border p-4 shadow-sm ${card.tone}">
+            <p class="text-sm font-semibold">${card.title}</p>
+            <div class="mt-3 space-y-1">
+              ${card.values.map((entry, index) => {
+                const labelKey = ['actual', 'speculation', 'budget'][index];
+                const id = `summary-${card.key}-${labelKey}`;
+                const valueClass = getSummaryValueClass(card.key, entry.value);
+                return `
+                  <div class="flex items-center justify-between gap-3 border-b border-gray-100 py-1 text-sm last:border-0">
+                    <span class="text-xs font-medium uppercase tracking-wide text-slate-500">${entry.label}:</span>
+                    <span id="${id}" class="currency ml-2 whitespace-nowrap font-mono text-sm font-semibold tabular-nums ${valueClass}">${formatCurrency(entry.value)}</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `).join('');
+
+        document.getElementById('summaryCards').innerHTML = html;
+      }
+
+      function refreshSummaryCards() {
+        const income = getSectionTotals('income');
+        const expenses = getSectionTotals('expenses');
+        const expenseTransfers = getSectionTotals('expenseTransfers');
+        const net = getNetTotals();
+
+        const values = {
+          'summary-income-actual': income.actual,
+          'summary-income-speculation': income.speculation,
+          'summary-income-budget': income.budget,
+          'summary-expenses-actual': expenses.actual,
+          'summary-expenses-speculation': expenses.speculation,
+          'summary-expenses-budget': expenses.budget,
+          'summary-transfers-actual': expenseTransfers.actual,
+          'summary-transfers-speculation': expenseTransfers.speculation,
+          'summary-transfers-budget': expenseTransfers.budget,
+          'summary-net-actual': net.actual,
+          'summary-net-speculation': net.speculation,
+          'summary-net-budget': net.budget,
+          'summary-bottom-line-actual': net.actualAfterTransfers,
+          'summary-bottom-line-speculation': net.speculationAfterTransfers,
+          'summary-bottom-line-budget': net.budgetAfterTransfers,
+        };
+
+        Object.entries(values).forEach(([id, value]) => {
+          const element = document.getElementById(id);
+          if (!element) return;
+
+          const cardKey = id.replace(/^summary-/, '').split('-').slice(0, -1).join('-');
+          element.textContent = formatCurrency(value);
+          element.className = `currency ml-2 whitespace-nowrap font-mono text-sm font-semibold tabular-nums ${getSummaryValueClass(cardKey, value)}`;
+        });
+      }
+
+      function renderBudgetTable(section) {
+        const target = section === 'income' ? 'incomeTableBody' : section === 'expenses' ? 'expensesTableBody' : 'expenseTransfersTableBody';
+        const rows = state[section] || [];
+
+        const totals = rows.reduce((acc, row) => {
+          acc.actual += Number(row.actual) || 0;
+          acc.speculation += Number(row.speculation) || 0;
+          acc.budget += Number(row.budget) || 0;
+          return acc;
+        }, { actual: 0, speculation: 0, budget: 0 });
+
+        const totalDiffs = {
+          actualBudget: section === 'income' ? totals.actual - totals.budget : totals.budget - totals.actual,
+          actualSpeculation: totals.speculation - totals.actual,
+          speculationBudget: totals.budget - totals.speculation
+        };
+
+        const html = rows.map((row) => {
+          const actualBudget = calculateDiff(section, row, 'actualBudget');
+          const actualSpeculation = calculateDiff(section, row, 'actualSpeculation');
+          const speculationBudget = calculateDiff(section, row, 'speculationBudget');
+
+          return `
+            <tr class="rounded-xl bg-slate-50 align-top">
+              <td class="rounded-l-xl px-2 py-2"><input data-section="${section}" data-field="name" data-id="${row.id}" type="text" value="${escapeHtml(row.name)}" class="table-cell-name" /></td>
+              <td class="numeric-column-cell"><input data-section="${section}" data-field="actual" data-id="${row.id}" type="number" step="0.01" value="${Number(row.actual).toFixed(2)}" class="table-cell-input" /></td>
+              <td class="numeric-column-cell"><input data-section="${section}" data-field="speculation" data-id="${row.id}" type="number" step="0.01" value="${Number(row.speculation).toFixed(2)}" class="table-cell-input" /></td>
+              <td class="numeric-column-cell"><input data-section="${section}" data-field="budget" data-id="${row.id}" type="number" step="0.01" value="${Number(row.budget).toFixed(2)}" class="table-cell-input" /></td>
+              <td id="budget-${section}-${row.id}-actualBudget-cell" class="numeric-column-cell font-medium ${getDiffClass(actualBudget)}"><span id="budget-${section}-${row.id}-actualBudget-value" class="currency">${formatCurrency(actualBudget)}</span></td>
+              <td id="budget-${section}-${row.id}-actualSpeculation-cell" class="numeric-column-cell font-medium ${getDiffClass(actualSpeculation)}"><span id="budget-${section}-${row.id}-actualSpeculation-value" class="currency">${formatCurrency(actualSpeculation)}</span></td>
+              <td id="budget-${section}-${row.id}-speculationBudget-cell" class="numeric-column-cell font-medium ${getDiffClass(speculationBudget)}"><span id="budget-${section}-${row.id}-speculationBudget-value" class="currency">${formatCurrency(speculationBudget)}</span></td>
+              <td class="rounded-r-xl px-2 py-2 text-center"><button type="button" data-section="${section}" data-action="delete-row" data-id="${row.id}" class="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">Delete</button></td>
+            </tr>
+          `;
+        }).join('');
+
+        const footer = `
+          <tr class="bg-slate-100 font-semibold text-slate-800">
+            <td class="rounded-l-xl px-2 py-3">Section Total</td>
+            <td id="budget-total-${section}-actual" class="numeric-column-cell currency">${formatCurrency(totals.actual)}</td>
+            <td id="budget-total-${section}-speculation" class="numeric-column-cell currency">${formatCurrency(totals.speculation)}</td>
+            <td id="budget-total-${section}-budget" class="numeric-column-cell currency">${formatCurrency(totals.budget)}</td>
+            <td id="budget-total-${section}-actualBudget" class="numeric-column-cell ${getDiffClass(totalDiffs.actualBudget)} currency">${formatCurrency(totalDiffs.actualBudget)}</td>
+            <td id="budget-total-${section}-actualSpeculation" class="numeric-column-cell ${getDiffClass(totalDiffs.actualSpeculation)} currency">${formatCurrency(totalDiffs.actualSpeculation)}</td>
+            <td id="budget-total-${section}-speculationBudget" class="numeric-column-cell ${getDiffClass(totalDiffs.speculationBudget)} currency">${formatCurrency(totalDiffs.speculationBudget)}</td>
+            <td class="rounded-r-xl px-2 py-3 text-center">&nbsp;</td>
+          </tr>
+        `;
+
+        document.getElementById(target).innerHTML = html + footer;
+      }
+
+      function refreshBudgetRow(section, rowId) {
+        const row = state[section].find((item) => item.id === rowId);
+        if (!row) return;
+
+        const values = {
+          actualBudget: calculateDiff(section, row, 'actualBudget'),
+          actualSpeculation: calculateDiff(section, row, 'actualSpeculation'),
+          speculationBudget: calculateDiff(section, row, 'speculationBudget')
+        };
+
+        Object.entries(values).forEach(([key, value]) => {
+          const cell = document.getElementById(`budget-${section}-${rowId}-${key}-cell`);
+          const valueEl = document.getElementById(`budget-${section}-${rowId}-${key}-value`);
+
+          if (cell) {
+            cell.className = `numeric-column-cell font-medium ${getDiffClass(value)}`;
+          }
+
+          if (valueEl) {
+            valueEl.textContent = formatCurrency(value);
+          }
+        });
+      }
+
+      function refreshBudgetSectionTotals(section) {
+        const rows = state[section] || [];
+        const totals = rows.reduce((acc, row) => {
+          acc.actual += Number(row.actual) || 0;
+          acc.speculation += Number(row.speculation) || 0;
+          acc.budget += Number(row.budget) || 0;
+          return acc;
+        }, { actual: 0, speculation: 0, budget: 0 });
+
+        const totalDiffs = {
+          actualBudget: section === 'income' ? totals.actual - totals.budget : totals.budget - totals.actual,
+          actualSpeculation: totals.speculation - totals.actual,
+          speculationBudget: totals.budget - totals.speculation
+        };
+
+        const totalFields = {
+          [`budget-total-${section}-actual`]: totals.actual,
+          [`budget-total-${section}-speculation`]: totals.speculation,
+          [`budget-total-${section}-budget`]: totals.budget,
+          [`budget-total-${section}-actualBudget`]: totalDiffs.actualBudget,
+          [`budget-total-${section}-actualSpeculation`]: totalDiffs.actualSpeculation,
+          [`budget-total-${section}-speculationBudget`]: totalDiffs.speculationBudget,
+        };
+
+        Object.entries(totalFields).forEach(([id, value]) => {
+          const element = document.getElementById(id);
+          if (!element) return;
+
+          const isDiffCell = id.includes('actualBudget') || id.includes('actualSpeculation') || id.includes('speculationBudget');
+          if (isDiffCell) {
+            element.className = `numeric-column-cell ${getDiffClass(value)} currency`;
+          } else {
+            element.className = `numeric-column-cell currency`;
+          }
+          element.textContent = formatCurrency(value);
+        });
+      }
+
+      function renderTransfers() {
+        const startingBalance = Number(state.startingBalance) || 0;
+        const actualNet = state.transfers.reduce((total, transfer) => total + getTransferNetAmount(transfer), 0);
+        const projectedNet = actualNet;
+        const totalIncome = getSectionTotals('income');
+        const totalExpense = getSectionTotals('expenses');
+        const totalTransferExpense = getSectionTotals('expenseTransfers');
+
+        const actualBalance = startingBalance + totalIncome.actual - totalExpense.actual - totalTransferExpense.actual - actualNet;
+        const projectedBalance = startingBalance + totalIncome.speculation - totalExpense.speculation - totalTransferExpense.speculation - projectedNet;
+
+        document.getElementById('startingBalance').value = startingBalance;
+        document.getElementById('actualBalanceValue').textContent = formatCurrency(actualBalance);
+        document.getElementById('projectedBalanceValue').textContent = formatCurrency(projectedBalance);
+
+        const html = state.transfers.map((transfer) => `
+          <tr class="rounded-xl bg-slate-50 align-top">
+            <td class="rounded-l-xl px-2 py-2"><input data-field="name" data-id="${transfer.id}" data-section="transfers" type="text" value="${escapeHtml(transfer.name)}" class="table-cell-name" /></td>
+            <td class="px-2 py-2">
+              <select data-field="direction" data-id="${transfer.id}" data-section="transfers" class="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100">
+                <option value="outgoing" ${transfer.direction === 'outgoing' ? 'selected' : ''}>Outgoing</option>
+                <option value="incoming" ${transfer.direction === 'incoming' ? 'selected' : ''}>Incoming</option>
+              </select>
+            </td>
+            <td class="numeric-column-cell"><input data-field="amount" data-id="${transfer.id}" data-section="transfers" type="number" step="0.01" value="${Number(transfer.amount).toFixed(2)}" class="table-cell-input" /></td>
+            <td class="rounded-r-xl px-2 py-2 text-center"><button type="button" data-action="delete-transfer" data-id="${transfer.id}" class="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">Delete</button></td>
+          </tr>
+        `).join('');
+
+        document.getElementById('transfersTableBody').innerHTML = html;
+      }
+
+      function refreshTransferSummary() {
+        const startingBalance = Number(state.startingBalance) || 0;
+        const actualNet = state.transfers.reduce((total, transfer) => total + getTransferNetAmount(transfer), 0);
+        const totalIncome = getSectionTotals('income');
+        const totalExpense = getSectionTotals('expenses');
+        const totalTransferExpense = getSectionTotals('expenseTransfers');
+        const actualBalance = startingBalance + totalIncome.actual - totalExpense.actual - totalTransferExpense.actual - actualNet;
+        const projectedBalance = startingBalance + totalIncome.speculation - totalExpense.speculation - totalTransferExpense.speculation - actualNet;
+
+        document.getElementById('actualBalanceValue').textContent = formatCurrency(actualBalance);
+        document.getElementById('projectedBalanceValue').textContent = formatCurrency(projectedBalance);
+      }
+
+      function renderDebtTable() {
+        const tbody = document.getElementById('debtTableBody');
+        const summary = document.getElementById('debtSummary');
+
+        const totalOutstanding = state.debt.reduce((sum, row) => sum + Number(row.balance || 0), 0);
+        const totalMonthlyPayments = state.debt.reduce((sum, row) => sum + Number(row.paymentThisMonth || 0), 0);
+        const totalMonthlyInterest = state.debt.reduce((sum, row) => sum + calculateMonthlyInterest(row), 0);
+
+        const summaryHtml = `
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Outstanding Debt</p>
+            <p id="debt-summary-outstanding-value" class="mt-2 text-2xl font-bold text-slate-900 currency">${formatCurrency(totalOutstanding)}</p>
+          </div>
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Monthly Payments</p>
+            <p id="debt-summary-payment-value" class="mt-2 text-2xl font-bold text-slate-900 currency">${formatCurrency(totalMonthlyPayments)}</p>
+          </div>
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Monthly Interest</p>
+            <p id="debt-summary-interest-value" class="mt-2 text-2xl font-bold text-slate-900 currency">${formatCurrency(totalMonthlyInterest)}</p>
+          </div>
+        `;
+
+        summary.innerHTML = summaryHtml;
+
+        tbody.innerHTML = state.debt.map((row) => {
+          const interest = calculateMonthlyInterest(row);
+          const months = calculateMonthsToPayoff(row);
+          return `
+            <tr class="rounded-xl bg-slate-50 align-top">
+              <td class="rounded-l-xl px-2 py-2"><input data-field="creditor" data-id="${row.id}" data-section="debt" type="text" value="${escapeHtml(row.creditor)}" class="table-cell-name" /></td>
+              <td class="numeric-column-cell"><input data-field="balance" data-id="${row.id}" data-section="debt" type="number" step="0.01" value="${Number(row.balance).toFixed(2)}" class="table-cell-input" /></td>
+              <td class="numeric-column-cell"><input data-field="rate" data-id="${row.id}" data-section="debt" type="number" step="0.01" value="${Number(row.rate).toFixed(2)}" class="table-cell-input" /></td>
+              <td class="numeric-column-cell"><input data-field="minPayment" data-id="${row.id}" data-section="debt" type="number" step="0.01" value="${Number(row.minPayment).toFixed(2)}" class="table-cell-input" /></td>
+              <td class="numeric-column-cell"><input data-field="paymentThisMonth" data-id="${row.id}" data-section="debt" type="number" step="0.01" value="${Number(row.paymentThisMonth).toFixed(2)}" class="table-cell-input" /></td>
+              <td class="numeric-column-cell"><input data-field="order" data-id="${row.id}" data-section="debt" type="number" step="1" value="${Number(row.order || 1).toFixed(0)}" class="table-cell-input" /></td>
+              <td class="numeric-column-cell text-right font-medium text-slate-700"><span id="debt-${row.id}-interest-value" class="currency">${formatCurrency(interest)}</span></td>
+              <td id="debt-${row.id}-months-cell" class="numeric-column-cell text-right font-medium ${months === Infinity ? 'text-amber-600' : 'text-slate-700'}"><span id="debt-${row.id}-months-value" class="currency">${months === Infinity ? '—' : months.toFixed(1) + ' mo'}</span></td>
+              <td class="px-2 py-2"><input data-field="notes" data-id="${row.id}" data-section="debt" type="text" value="${escapeHtml(row.notes)}" class="table-cell-name" /></td>
+              <td class="rounded-r-xl px-2 py-2 text-center"><button type="button" data-action="delete-debt" data-id="${row.id}" class="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">Delete</button></td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      function refreshDebtRow(rowId) {
+        const row = state.debt.find((item) => item.id === rowId);
+        if (!row) return;
+
+        const interest = calculateMonthlyInterest(row);
+        const months = calculateMonthsToPayoff(row);
+        const interestEl = document.getElementById(`debt-${rowId}-interest-value`);
+        const monthsCell = document.getElementById(`debt-${rowId}-months-cell`);
+        const monthsValue = document.getElementById(`debt-${rowId}-months-value`);
+
+        if (interestEl) {
+          interestEl.textContent = formatCurrency(interest);
+        }
+
+        if (monthsCell && monthsValue) {
+          monthsCell.className = `numeric-column-cell font-medium ${months === Infinity ? 'text-amber-600' : 'text-slate-700'}`;
+          monthsValue.textContent = months === Infinity ? '—' : months.toFixed(1) + ' mo';
+        }
+      }
+
+      function refreshDebtSummary() {
+        const totalOutstanding = state.debt.reduce((sum, row) => sum + Number(row.balance || 0), 0);
+        const totalMonthlyPayments = state.debt.reduce((sum, row) => sum + Number(row.paymentThisMonth || 0), 0);
+        const totalMonthlyInterest = state.debt.reduce((sum, row) => sum + calculateMonthlyInterest(row), 0);
+
+        const map = {
+          'debt-summary-outstanding-value': totalOutstanding,
+          'debt-summary-payment-value': totalMonthlyPayments,
+          'debt-summary-interest-value': totalMonthlyInterest,
+        };
+
+        Object.entries(map).forEach(([id, value]) => {
+          const element = document.getElementById(id);
+          if (element) {
+            element.textContent = formatCurrency(value);
+          }
+        });
+      }
+
+      function calculateMonthlyInterest(row) {
+        const balance = Number(row.balance) || 0;
+        const rate = Number(row.rate) || 0;
+        return (balance * (rate / 100)) / 12;
+      }
+
+      function calculateMonthsToPayoff(row) {
+        const balance = Number(row.balance) || 0;
+        const rate = Number(row.rate) || 0;
+        const payment = Number(row.paymentThisMonth) || 0;
+
+        if (balance <= 0) return 0;
+
+        const monthlyRate = rate / 100 / 12;
+        if (payment <= 0) return Infinity;
+        if (payment <= balance * monthlyRate) return Infinity;
+
+        if (monthlyRate === 0) return balance / payment;
+
+        return -Math.log(1 - (balance * monthlyRate) / payment) / Math.log(1 + monthlyRate);
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      function addCategory(section) {
+        const label = section === 'income' ? 'New Income' : section === 'expenses' ? 'New Expense' : 'New Transfer Expense';
+        state[section] = state[section] || [];
+        state[section].push({
+          id: createId(),
+          name: label,
+          actual: 0,
+          speculation: 0,
+          budget: 0,
+        });
+        saveState();
+        renderAll();
+      }
+
+      function addTransfer() {
+        state.transfers.push({
+          id: createId(),
+          name: 'New Transfer',
+          amount: 0,
+          direction: 'outgoing',
+        });
+        saveState();
+        renderAll();
+      }
+
+      function addDebt() {
+        state.debt.push({
+          id: createId(),
+          creditor: 'New Creditor',
+          balance: 0,
+          rate: 0,
+          minPayment: 0,
+          paymentThisMonth: 0,
+          order: state.debt.length + 1,
+          notes: ''
+        });
+        saveState();
+        renderAll();
+      }
+
+      function updateBudgetRowFromInput(section, rowId, field, value) {
+        const row = state[section].find((item) => item.id === rowId);
+        if (!row) return;
+
+        if (field === 'name') {
+          row.name = value;
+        } else {
+          row[field] = normalizeNumber(value, 0);
+        }
+
+        refreshBudgetRow(section, rowId);
+        refreshBudgetSectionTotals(section);
+        refreshSummaryCards();
+        refreshTransferSummary();
+      }
+
+      function updateTransferRowFromInput(rowId, field, value) {
+        const row = state.transfers.find((item) => item.id === rowId);
+        if (!row) return;
+
+        if (field === 'name') {
+          row.name = value;
+        } else if (field === 'direction') {
+          row.direction = value === 'incoming' ? 'incoming' : 'outgoing';
+        } else if (field === 'amount') {
+          row.amount = normalizeNumber(value, 0);
+        }
+
+        refreshTransferSummary();
+      }
+
+      function updateDebtRowFromInput(rowId, field, value) {
+        const row = state.debt.find((item) => item.id === rowId);
+        if (!row) return;
+
+        if (field === 'creditor' || field === 'notes') {
+          row[field] = value;
+        } else {
+          row[field] = normalizeNumber(value, 0);
+        }
+
+        refreshDebtRow(rowId);
+        refreshDebtSummary();
+      }
+
+      function validateDebtOrderDuplicates() {
+        const orderInputs = document.querySelectorAll('input[data-section="debt"][data-field="order"]');
+        const counts = new Map();
+
+        orderInputs.forEach((input) => {
+          const rawValue = input.value;
+          if (rawValue === null || rawValue === undefined || rawValue === '') return;
+
+          const numericValue = Number(rawValue);
+          if (!Number.isFinite(numericValue) || numericValue === 0) return;
+
+          const key = String(numericValue);
+          counts.set(key, (counts.get(key) || 0) + 1);
+        });
+
+        orderInputs.forEach((input) => {
+          const rawValue = input.value;
+          if (rawValue === null || rawValue === undefined || rawValue === '') {
+            input.title = '';
+            input.classList.remove('bg-red-50', 'text-red-600', 'border-red-500', 'font-bold', 'focus:ring-red-400', 'focus:border-red-500');
+            input.classList.add('bg-white', 'text-gray-800', 'border-gray-300');
+            return;
+          }
+
+          const numericValue = Number(rawValue);
+          const isDuplicate = Number.isFinite(numericValue) && numericValue !== 0 && (counts.get(String(numericValue)) || 0) > 1;
+
+          if (isDuplicate) {
+            input.title = 'Duplicate priority number';
+            input.classList.remove('bg-white', 'text-gray-800', 'border-gray-300');
+            input.classList.add('bg-red-50', 'text-red-600', 'border-red-500', 'font-bold', 'focus:ring-red-400', 'focus:border-red-500');
+          } else {
+            input.title = '';
+            input.classList.remove('bg-red-50', 'text-red-600', 'border-red-500', 'font-bold', 'focus:ring-red-400', 'focus:border-red-500');
+            input.classList.add('bg-white', 'text-gray-800', 'border-gray-300');
+          }
+        });
+      }
+
+      function handleTableInput(event) {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+
+        const section = target.dataset.section;
+        const field = target.dataset.field;
+        const id = target.dataset.id;
+
+        if (!section || !field || !id) return;
+
+        if (section === 'income' || section === 'expenses' || section === 'expenseTransfers') {
+          updateBudgetRowFromInput(section, id, field, target.value);
+        } else if (section === 'transfers') {
+          updateTransferRowFromInput(id, field, target.value);
+        } else if (section === 'debt') {
+          updateDebtRowFromInput(id, field, target.value);
+          validateDebtOrderDuplicates();
+        }
+
+        saveState();
+      }
+
+      function handleDeleteAction(event) {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const { action, id, section } = target.dataset;
+
+        if (!action || !id) return;
+
+        if (action === 'delete-row' && (section === 'income' || section === 'expenses' || section === 'expenseTransfers')) {
+          state[section] = state[section].filter((row) => row.id !== id);
+        }
+
+        if (action === 'delete-transfer') {
+          state.transfers = state.transfers.filter((transfer) => transfer.id !== id);
+        }
+
+        if (action === 'delete-debt') {
+          state.debt = state.debt.filter((debtEntry) => debtEntry.id !== id);
+        }
+
+        saveState();
+        renderAll();
+      }
+
+      function renderTabs() {
+        const tabButtons = document.querySelectorAll('.tab-button');
+        tabButtons.forEach((button) => {
+          const isActive = button.dataset.tab === currentTab;
+          button.classList.toggle('bg-indigo-600', isActive);
+          button.classList.toggle('text-white', isActive);
+          button.classList.toggle('shadow-sm', isActive);
+          button.classList.toggle('bg-slate-100', !isActive);
+          button.classList.toggle('text-slate-700', !isActive);
+        });
+
+        document.querySelectorAll('.tab-panel').forEach((panel) => {
+          const shouldShow = panel.id === `tab-${currentTab}`;
+          panel.classList.toggle('hidden', !shouldShow);
+        });
+      }
+
+      function renderAll() {
+        renderSummaryCards();
+        renderBudgetTable('income');
+        renderBudgetTable('expenses');
+        renderBudgetTable('expenseTransfers');
+        renderTransfers();
+        renderDebtTable();
+        renderTabs();
+      }
+
+      function parseCsvValue(raw) {
+        return raw.trim().replace(/^"|"$/g, '').replace(/""/g, '"');
+      }
+
+      function parseCsv(text) {
+        const rows = [];
+        let current = '';
+        let row = [];
+        let inQuotes = false;
+
+        for (let i = 0; i < text.length; i += 1) {
+          const char = text[i];
+          const next = text[i + 1];
+
+          if (char === '"') {
+            if (inQuotes && next === '"') {
+              current += '"';
+              i += 1;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (char === ',' && !inQuotes) {
+            row.push(current);
+            current = '';
+          } else if ((char === '\n' || char === '\r') && !inQuotes) {
+            if (char === '\r' && next === '\n') i += 1;
+            row.push(current);
+            if (row.some((value) => value !== '')) {
+              rows.push(row.map(parseCsvValue));
+            }
+            row = [];
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+
+        if (current.length > 0 || row.length > 0) {
+          row.push(current);
+          if (row.some((value) => value !== '')) {
+            rows.push(row.map(parseCsvValue));
+          }
+        }
+
+        return rows.filter((entry) => entry.some((value) => value.trim() !== ''));
+      }
+
+      function exportCsv() {
+        const rows = [];
+        rows.push(['type', 'category', 'actual', 'speculation', 'budget', 'direction', 'amount', 'creditor', 'balance', 'rate', 'minPayment', 'paymentThisMonth', 'order', 'notes', 'startingBalance']);
+
+        state.income.forEach((item) => {
+          rows.push(['income', item.name, item.actual, item.speculation, item.budget, '', '', '', '', '', '', '', '', '', '']);
+        });
+
+        state.expenses.forEach((item) => {
+          rows.push(['expense', item.name, item.actual, item.speculation, item.budget, '', '', '', '', '', '', '', '', '', '']);
+        });
+
+        state.expenseTransfers.forEach((item) => {
+          rows.push(['expenseTransfer', item.name, item.actual, item.speculation, item.budget, '', '', '', '', '', '', '', '', '', '']);
+        });
+
+        state.transfers.forEach((transfer) => {
+          rows.push(['transfer', '', '', '', '', transfer.direction, transfer.amount, '', '', '', '', '', '', '', transfer.name, '']);
+        });
+
+        state.debt.forEach((item) => {
+          rows.push(['debt', '', '', '', '', '', '', item.creditor, item.balance, item.rate, item.minPayment, item.paymentThisMonth, item.order, item.notes, '', '']);
+        });
+
+        rows.push(['meta', '', '', '', '', '', '', '', '', '', '', '', '', '', '', state.startingBalance]);
+
+        const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = 'budget-export.csv';
+        anchor.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function importCsv(file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const text = event.target.result;
+            const rows = parseCsv(text);
+            if (rows.length < 2) {
+              throw new Error('CSV file is empty or malformed.');
+            }
+
+            const headerMap = rows[0].map((cell) => cell.trim().toLowerCase().replace(/\s+/g, ''));
+            const importedState = {
+              startingBalance: 0,
+              income: [],
+              expenses: [],
+              expenseTransfers: [],
+              transfers: [],
+              debt: []
+            };
+
+            for (let i = 1; i < rows.length; i += 1) {
+              const row = rows[i];
+              const obj = Object.fromEntries(headerMap.map((header, index) => [header, row[index] ?? '']));
+
+              const type = String(obj.type || obj.section || '').trim().toLowerCase();
+              const categoryName = obj.category || obj.name || obj['categoryname'] || obj['creditor'] || obj['transfername'] || '';
+
+              if (type === 'income' || (obj.category && String(obj.category).toLowerCase().includes('income'))) {
+                importedState.income.push({
+                  id: createId(),
+                  name: categoryName || `Imported Income ${importedState.income.length + 1}`,
+                  actual: normalizeNumber(obj.actual || obj.actualamount || 0),
+                  speculation: normalizeNumber(obj.speculation || obj.forecast || 0),
+                  budget: normalizeNumber(obj.budget || obj.target || 0)
+                });
+                continue;
+              }
+
+              if (type === 'expense' || (obj.category && String(obj.category).toLowerCase().includes('expense'))) {
+                importedState.expenses.push({
+                  id: createId(),
+                  name: categoryName || `Imported Expense ${importedState.expenses.length + 1}`,
+                  actual: normalizeNumber(obj.actual || obj.actualamount || 0),
+                  speculation: normalizeNumber(obj.speculation || obj.forecast || 0),
+                  budget: normalizeNumber(obj.budget || obj.target || 0)
+                });
+                continue;
+              }
+
+              if (type === 'expensetransfer' || (obj.category && String(obj.category).toLowerCase().includes('transfer'))) {
+                importedState.expenseTransfers.push({
+                  id: createId(),
+                  name: categoryName || `Imported Transfer ${importedState.expenseTransfers.length + 1}`,
+                  actual: normalizeNumber(obj.actual || obj.actualamount || 0),
+                  speculation: normalizeNumber(obj.speculation || obj.forecast || 0),
+                  budget: normalizeNumber(obj.budget || obj.target || 0)
+                });
+                continue;
+              }
+
+              if (type === 'transfer' || headerMap.includes('direction') && obj.direction) {
+                importedState.transfers.push({
+                  id: createId(),
+                  name: obj.name || obj['transfername'] || `Transfer ${importedState.transfers.length + 1}`,
+                  amount: normalizeNumber(obj.amount || obj['transferamount'] || 0),
+                  direction: obj.direction === 'incoming' ? 'incoming' : 'outgoing'
+                });
+                continue;
+              }
+
+              if (type === 'debt' || ((obj.balance || obj.balancetotal) && (obj.rate || obj.interestrate))) {
+                importedState.debt.push({
+                  id: createId(),
+                  creditor: obj.creditor || obj.name || `Debt ${importedState.debt.length + 1}`,
+                  balance: normalizeNumber(obj.balance || obj.balancetotal || 0),
+                  rate: normalizeNumber(obj.rate || obj.interestrate || 0),
+                  minPayment: normalizeNumber(obj.minpayment || obj.minimumpayment || 0),
+                  paymentThisMonth: normalizeNumber(obj.paymentthismonth || obj.monthlypayment || 0),
+                  order: normalizeNumber(obj.order || obj.payofforder || (importedState.debt.length + 1)),
+                  notes: obj.notes || ''
+                });
+                continue;
+              }
+
+              if (obj.startingbalance || obj['startingbalance'] || obj.balance) {
+                importedState.startingBalance = normalizeNumber(obj.startingbalance || obj['startingbalance'] || obj.balance || 0);
+              }
+
+              const isGenericBudgetRow = (
+                headerMap.includes('actual') &&
+                headerMap.includes('speculation') &&
+                headerMap.includes('budget')
+              );
+
+              if (isGenericBudgetRow && obj.name) {
+                const name = String(obj.name).toLowerCase();
+                const bucket = name.includes('salary') || name.includes('bonus') || name.includes('interest') || name.includes('income') || name.includes('wages') ? 'income' : name.includes('to ') || name.includes('transfer') ? 'expenseTransfers' : 'expenses';
+                const normalized = {
+                  id: createId(),
+                  name: obj.name,
+                  actual: normalizeNumber(obj.actual || 0),
+                  speculation: normalizeNumber(obj.speculation || 0),
+                  budget: normalizeNumber(obj.budget || 0),
+                };
+
+                importedState[bucket].push(normalized);
+              }
+            }
+
+            if (importedState.income.length === 0 && importedState.expenses.length === 0 && importedState.expenseTransfers.length === 0 && importedState.transfers.length === 0 && importedState.debt.length === 0) {
+              throw new Error('No recognizable financial rows found in the CSV file.');
+            }
+
+            state = {
+              startingBalance: importedState.startingBalance || state.startingBalance,
+              income: importedState.income.length ? importedState.income : state.income,
+              expenses: importedState.expenses.length ? importedState.expenses : state.expenses,
+              expenseTransfers: importedState.expenseTransfers.length ? importedState.expenseTransfers : state.expenseTransfers,
+              transfers: importedState.transfers.length ? importedState.transfers : state.transfers,
+              debt: importedState.debt.length ? importedState.debt : state.debt,
+            };
+
+            saveState();
+            renderAll();
+          } catch (error) {
+            console.error(error);
+            window.alert('Import failed. Please use a CSV export generated by this app or a basic category budget file.');
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      let currentTab = 'dashboard';
+
+      document.querySelectorAll('.tab-button').forEach((button) => {
+        button.addEventListener('click', () => {
+          currentTab = button.dataset.tab;
+          renderTabs();
+        });
+      });
+
+      document.querySelectorAll('.add-row-btn').forEach((button) => {
+        button.addEventListener('click', () => addCategory(button.dataset.section));
+      });
+
+      document.getElementById('addTransferBtn').addEventListener('click', addTransfer);
+      document.getElementById('addDebtBtn').addEventListener('click', addDebt);
+      document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
+      document.getElementById('importCsvBtn').addEventListener('click', () => {
+        document.getElementById('csvFileInput').click();
+      });
+      document.getElementById('csvFileInput').addEventListener('change', (event) => {
+        const file = event.target.files && event.target.files[0];
+        if (file) importCsv(file);
+        event.target.value = '';
+      });
+
+      document.addEventListener('input', handleTableInput);
+      document.addEventListener('change', handleTableInput);
+      document.addEventListener('click', handleDeleteAction);
+
+      document.getElementById('startingBalance').addEventListener('input', (event) => {
+        state.startingBalance = normalizeNumber(event.target.value, 0);
+        saveState();
+        refreshTransferSummary();
+      });
+
+      document.addEventListener('blur', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const section = target.dataset.section;
+        const field = target.dataset.field;
+        const id = target.dataset.id;
+
+        if (!section || !field || !id) return;
+        saveState();
+      }, true);
+
+      renderAll();
+    </script>
+  </body>
+</html>
