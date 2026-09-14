@@ -12,10 +12,16 @@ A static single-page budget dashboard for planning monthly income, expenses, tra
 
 ## Run locally
 
-Because this is a static HTML app, you can serve it with any local web server:
+Because this is a static HTML app, you can serve it with any local web server. On Windows, the easiest command is:
 
 ```sh
 py -m http.server 8000
+```
+
+You can also use the included workspace helper script:
+
+```powershell
+start_budget_app.cmd
 ```
 
 Then open:
