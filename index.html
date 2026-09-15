@@ -188,8 +188,8 @@
           <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div class="mb-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div>
-                <h2 class="text-lg font-bold text-slate-900">Starting Balance & Cash Flow Projection</h2>
-                <p class="text-xs text-slate-500">Project month-end availability based on actual, forecast, and transfer activity.</p>
+                <h2 class="text-lg font-bold text-slate-900">Monthly Cash Flow Projection</h2>
+                <p class="text-xs text-slate-500">Compare entered activity with your planned month-end balance.</p>
               </div>
               <div class="w-full max-w-xs">
                 <label for="startingBalance" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Starting Balance ($)</label>
@@ -197,14 +197,42 @@
               </div>
             </div>
 
-            <div class="grid gap-4 md:grid-cols-2">
+            <div class="grid gap-4 md:grid-cols-3">
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Actual to Date Balance</p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Current Balance</p>
                 <p id="actualBalanceValue" class="mt-3 text-3xl font-bold tracking-tight text-slate-900 currency"></p>
+                <p class="mt-2 text-xs text-slate-500">Based on entered actual activity</p>
               </div>
               <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
-                <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Speculated Month-End Projected Balance</p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Projected Month-End</p>
                 <p id="projectedBalanceValue" class="mt-3 text-3xl font-bold tracking-tight text-indigo-900 currency"></p>
+                <p class="mt-2 text-xs text-indigo-700">Based on speculation and planned transfers</p>
+              </div>
+              <div class="rounded-xl border border-slate-200 bg-white p-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Projected Change</p>
+                <p id="projectedChangeValue" class="mt-3 text-3xl font-bold tracking-tight currency"></p>
+                <p id="projectionWarning" class="mt-2 hidden text-xs font-semibold text-rose-600">Projected balance is negative</p>
+              </div>
+            </div>
+
+            <div class="mt-5 grid gap-4 border-t border-slate-200 pt-5 md:grid-cols-2">
+              <div>
+                <h3 class="text-sm font-bold text-slate-900">Current balance breakdown</h3>
+                <dl class="mt-3 space-y-2 text-sm">
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Starting balance</dt><dd id="actualBreakdownStarting" class="font-mono tabular-nums"></dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Actual income</dt><dd id="actualBreakdownIncome" class="font-mono tabular-nums text-emerald-600"></dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Actual expenses</dt><dd id="actualBreakdownExpenses" class="font-mono tabular-nums text-rose-600"></dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Actual transfers</dt><dd id="actualBreakdownTransfers" class="font-mono tabular-nums text-rose-600"></dd></div>
+                </dl>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-slate-900">Projected month-end breakdown</h3>
+                <dl class="mt-3 space-y-2 text-sm">
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Starting balance</dt><dd id="projectedBreakdownStarting" class="font-mono tabular-nums"></dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Projected income</dt><dd id="projectedBreakdownIncome" class="font-mono tabular-nums text-emerald-600"></dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Projected expenses</dt><dd id="projectedBreakdownExpenses" class="font-mono tabular-nums text-rose-600"></dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Planned transfers</dt><dd id="projectedBreakdownTransfers" class="font-mono tabular-nums text-rose-600"></dd></div>
+                </dl>
               </div>
             </div>
           </div>
@@ -224,7 +252,8 @@
                   <tr class="text-left text-xs uppercase tracking-wide text-slate-500">
                     <th class="px-2 py-2 text-left font-semibold">Transfer Name</th>
                     <th class="px-2 py-2 text-left font-semibold">Direction</th>
-                    <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Amount ($)</th>
+                    <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Actual ($)</th>
+                    <th class="w-32 min-w-[8rem] px-2 py-2 pr-2 text-right font-semibold">Planned ($)</th>
                     <th class="px-2 py-2 text-center font-semibold">Actions</th>
                   </tr>
                 </thead>
@@ -306,9 +335,9 @@
           { id: createId(), name: 'To Empower Retirement', actual: 0, speculation: 0, budget: 0 }
         ],
         transfers: [
-          { id: createId(), name: 'Emergency Fund', amount: 350, direction: 'outgoing' },
-          { id: createId(), name: '401(k)', amount: 450, direction: 'outgoing' },
-          { id: createId(), name: 'Family Support', amount: 150, direction: 'incoming' }
+          { id: createId(), name: 'Emergency Fund', amount: 350, actual: 350, planned: 350, direction: 'outgoing' },
+          { id: createId(), name: '401(k)', amount: 450, actual: 450, planned: 450, direction: 'outgoing' },
+          { id: createId(), name: 'Family Support', amount: 150, actual: 150, planned: 150, direction: 'incoming' }
         ],
         debt: [
           { id: createId(), creditor: 'Visa', balance: 4200, rate: 18.9, minPayment: 125, paymentThisMonth: 180, order: 1, notes: 'High-interest card' },
@@ -340,10 +369,13 @@
       }
 
       function normalizeTransfer(row) {
+        const legacyAmount = normalizeNumber(row.amount);
         return {
           id: row.id || createId(),
           name: row.name || 'New Transfer',
-          amount: normalizeNumber(row.amount),
+          amount: normalizeNumber(row.planned, legacyAmount),
+          actual: normalizeNumber(row.actual, legacyAmount),
+          planned: normalizeNumber(row.planned, legacyAmount),
           direction: row.direction === 'incoming' ? 'incoming' : 'outgoing'
         };
       }
@@ -491,15 +523,15 @@
         };
       }
 
-      function getTransferNetAmount(transfer) {
-        const amount = Number(transfer.amount) || 0;
+      function getTransferNetAmount(transfer, field = 'planned') {
+        const amount = Number(transfer[field]) || 0;
         return transfer.direction === 'incoming' ? -amount : amount;
       }
 
       function getTransferTotals() {
         const totals = state.transfers.reduce(
           (acc, transfer) => {
-            const net = getTransferNetAmount(transfer);
+            const net = getTransferNetAmount(transfer, 'planned');
             acc.actual += net;
             acc.speculation += net;
             acc.budget += net;
@@ -768,14 +800,14 @@
 
       function renderTransfers() {
         const startingBalance = Number(state.startingBalance) || 0;
-        const actualNet = state.transfers.reduce((total, transfer) => total + getTransferNetAmount(transfer), 0);
-        const projectedNet = actualNet;
+        const actualNet = state.transfers.reduce((total, transfer) => total + getTransferNetAmount(transfer, 'actual'), 0);
+        const plannedNet = state.transfers.reduce((total, transfer) => total + getTransferNetAmount(transfer, 'planned'), 0);
         const totalIncome = getSectionTotals('income');
         const totalExpense = getSectionTotals('expenses');
         const totalTransferExpense = getSectionTotals('expenseTransfers');
 
         const actualBalance = startingBalance + totalIncome.actual - totalExpense.actual - totalTransferExpense.actual - actualNet;
-        const projectedBalance = startingBalance + totalIncome.speculation - totalExpense.speculation - totalTransferExpense.speculation - projectedNet;
+        const projectedBalance = startingBalance + totalIncome.speculation - totalExpense.speculation - totalTransferExpense.speculation - plannedNet;
 
         document.getElementById('startingBalance').value = startingBalance;
         document.getElementById('actualBalanceValue').textContent = formatCurrency(actualBalance);
@@ -790,25 +822,48 @@
                 <option value="incoming" ${transfer.direction === 'incoming' ? 'selected' : ''}>Incoming</option>
               </select>
             </td>
-            <td class="numeric-column-cell"><input data-field="amount" data-id="${transfer.id}" data-section="transfers" type="number" step="0.01" value="${Number(transfer.amount).toFixed(2)}" class="table-cell-input" /></td>
+            <td class="numeric-column-cell"><input data-field="actual" data-id="${transfer.id}" data-section="transfers" type="number" step="0.01" value="${Number(transfer.actual).toFixed(2)}" class="table-cell-input" /></td>
+            <td class="numeric-column-cell"><input data-field="planned" data-id="${transfer.id}" data-section="transfers" type="number" step="0.01" value="${Number(transfer.planned).toFixed(2)}" class="table-cell-input" /></td>
             <td class="rounded-r-xl px-2 py-2 text-center"><button type="button" data-action="delete-transfer" data-id="${transfer.id}" class="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">Delete</button></td>
           </tr>
         `).join('');
 
         document.getElementById('transfersTableBody').innerHTML = html;
+        refreshTransferSummary();
       }
 
       function refreshTransferSummary() {
         const startingBalance = Number(state.startingBalance) || 0;
-        const actualNet = state.transfers.reduce((total, transfer) => total + getTransferNetAmount(transfer), 0);
+        const actualNet = state.transfers.reduce((total, transfer) => total + getTransferNetAmount(transfer, 'actual'), 0);
+        const plannedNet = state.transfers.reduce((total, transfer) => total + getTransferNetAmount(transfer, 'planned'), 0);
         const totalIncome = getSectionTotals('income');
         const totalExpense = getSectionTotals('expenses');
         const totalTransferExpense = getSectionTotals('expenseTransfers');
         const actualBalance = startingBalance + totalIncome.actual - totalExpense.actual - totalTransferExpense.actual - actualNet;
-        const projectedBalance = startingBalance + totalIncome.speculation - totalExpense.speculation - totalTransferExpense.speculation - actualNet;
+        const projectedBalance = startingBalance + totalIncome.speculation - totalExpense.speculation - totalTransferExpense.speculation - plannedNet;
+        const actualTransferDisplay = actualNet >= 0 ? -actualNet : Math.abs(actualNet);
+        const plannedTransferDisplay = plannedNet >= 0 ? -plannedNet : Math.abs(plannedNet);
+        const projectedChange = projectedBalance - actualBalance;
 
         document.getElementById('actualBalanceValue').textContent = formatCurrency(actualBalance);
         document.getElementById('projectedBalanceValue').textContent = formatCurrency(projectedBalance);
+        document.getElementById('projectedChangeValue').textContent = formatCurrency(projectedChange);
+        document.getElementById('projectedChangeValue').className = `mt-3 text-3xl font-bold tracking-tight currency ${projectedChange >= 0 ? 'text-emerald-600' : 'text-rose-600'}`;
+        document.getElementById('projectionWarning').classList.toggle('hidden', projectedBalance >= 0);
+
+        const breakdown = {
+          actualBreakdownStarting: startingBalance,
+          actualBreakdownIncome: totalIncome.actual,
+          actualBreakdownExpenses: -(totalExpense.actual + totalTransferExpense.actual),
+          actualBreakdownTransfers: actualTransferDisplay,
+          projectedBreakdownStarting: startingBalance,
+          projectedBreakdownIncome: totalIncome.speculation,
+          projectedBreakdownExpenses: -(totalExpense.speculation + totalTransferExpense.speculation),
+          projectedBreakdownTransfers: plannedTransferDisplay,
+        };
+        Object.entries(breakdown).forEach(([id, value]) => {
+          document.getElementById(id).textContent = formatCurrency(value);
+        });
       }
 
       function renderDebtTable() {
@@ -945,6 +1000,8 @@
           id: createId(),
           name: 'New Transfer',
           amount: 0,
+          actual: 0,
+          planned: 0,
           direction: 'outgoing',
         });
         saveState();
@@ -990,8 +1047,9 @@
           row.name = value;
         } else if (field === 'direction') {
           row.direction = value === 'incoming' ? 'incoming' : 'outgoing';
-        } else if (field === 'amount') {
-          row.amount = normalizeNumber(value, 0);
+        } else if (field === 'actual' || field === 'planned') {
+          row[field] = normalizeNumber(value, 0);
+          if (field === 'planned') row.amount = row.planned;
         }
 
         refreshTransferSummary();
