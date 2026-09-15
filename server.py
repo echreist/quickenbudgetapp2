@@ -104,6 +104,11 @@ class BudgetHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path == '/favicon.ico':
+            self.send_response(204)
+            self.end_headers()
+            return
+
         if parsed.path == '/api/load':
             payload = read_data_file()
             self._send_json(200, payload)
