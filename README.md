@@ -1,6 +1,6 @@
 # Quicken Budget App 2
 
-A static single-page budget dashboard for planning monthly income, expenses, transfers, and debt. The app is implemented in one HTML file with embedded JavaScript and CSS styling.
+A single-page budget dashboard for planning monthly income, expenses, transfers, and debt. The app is implemented in one HTML file with embedded JavaScript and CSS styling, with a small Python server for saving data to disk.
 
 ## Features
 
@@ -12,10 +12,10 @@ A static single-page budget dashboard for planning monthly income, expenses, tra
 
 ## Run locally
 
-Because this is a static HTML app, you can serve it with any local web server. On Windows, the easiest command is:
+The app uses the included Python server for its `/api/load` and `/api/save` endpoints. On Windows, the easiest command is:
 
 ```sh
-py -m http.server 8000
+py server.py
 ```
 
 You can also use the included workspace helper script:
