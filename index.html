@@ -854,15 +854,32 @@
           case 'actualBudget':
             return type === 'income' ? Number(row.actual) - Number(row.budget) : Number(row.budget) - Number(row.actual);
           case 'actualSpeculation':
-            return Number(row.speculation) - Number(row.actual);
+            return type === 'income' ? Number(row.actual) - Number(row.speculation) : Number(row.speculation) - Number(row.actual);
           case 'speculationBudget':
-            return Number(row.budget) - Number(row.speculation);
+            return type === 'income' ? Number(row.speculation) - Number(row.budget) : Number(row.budget) - Number(row.speculation);
           default:
             return 0;
         }
       }
 
-      function getDiffClass(value) {
+      function getDiffClass(section, value, key = null) {
+        if (value === 0) {
+          if (section === 'income' && (key === 'actualSpeculation' || key === 'speculationBudget')) {
+            return 'text-slate-500';
+          }
+          return 'text-emerald-600';
+        }
+
+        if (section === 'income') {
+          if (key === 'actualBudget') {
+            return value >= 0 ? 'text-emerald-600' : 'text-rose-600';
+          }
+
+          if (key === 'actualSpeculation' || key === 'speculationBudget') {
+            return value > 0 ? 'text-emerald-600' : 'text-rose-600';
+          }
+        }
+
         return value >= 0 ? 'text-emerald-600' : 'text-rose-600';
       }
 
@@ -1002,8 +1019,8 @@
 
         const totalDiffs = {
           actualBudget: section === 'income' ? totals.actual - totals.budget : totals.budget - totals.actual,
-          actualSpeculation: totals.speculation - totals.actual,
-          speculationBudget: totals.budget - totals.speculation
+          actualSpeculation: section === 'income' ? totals.actual - totals.speculation : totals.speculation - totals.actual,
+          speculationBudget: section === 'income' ? totals.speculation - totals.budget : totals.budget - totals.speculation
         };
 
         const html = rows.map((row) => {
@@ -1017,9 +1034,9 @@
               <td class="numeric-column-cell"><input data-section="${section}" data-field="actual" data-id="${row.id}" type="number" step="0.01" value="${Number(row.actual).toFixed(2)}" class="table-cell-input" /></td>
               <td class="numeric-column-cell"><input data-section="${section}" data-field="speculation" data-id="${row.id}" type="number" step="0.01" value="${Number(row.speculation).toFixed(2)}" class="table-cell-input" /></td>
               <td class="numeric-column-cell"><input data-section="${section}" data-field="budget" data-id="${row.id}" type="number" step="0.01" value="${Number(row.budget).toFixed(2)}" class="table-cell-input" /></td>
-              <td id="budget-${section}-${row.id}-actualBudget-cell" class="numeric-column-cell font-medium ${getDiffClass(actualBudget)}"><span id="budget-${section}-${row.id}-actualBudget-value" class="currency">${formatCurrency(actualBudget)}</span></td>
-              <td id="budget-${section}-${row.id}-actualSpeculation-cell" class="numeric-column-cell font-medium ${getDiffClass(actualSpeculation)}"><span id="budget-${section}-${row.id}-actualSpeculation-value" class="currency">${formatCurrency(actualSpeculation)}</span></td>
-              <td id="budget-${section}-${row.id}-speculationBudget-cell" class="numeric-column-cell font-medium ${getDiffClass(speculationBudget)}"><span id="budget-${section}-${row.id}-speculationBudget-value" class="currency">${formatCurrency(speculationBudget)}</span></td>
+              <td id="budget-${section}-${row.id}-actualBudget-cell" class="numeric-column-cell font-medium ${getDiffClass(section, actualBudget, 'actualBudget')}"><span id="budget-${section}-${row.id}-actualBudget-value" class="currency">${formatCurrency(actualBudget)}</span></td>
+              <td id="budget-${section}-${row.id}-actualSpeculation-cell" class="numeric-column-cell font-medium ${getDiffClass(section, actualSpeculation, 'actualSpeculation')}"><span id="budget-${section}-${row.id}-actualSpeculation-value" class="currency">${formatCurrency(actualSpeculation)}</span></td>
+              <td id="budget-${section}-${row.id}-speculationBudget-cell" class="numeric-column-cell font-medium ${getDiffClass(section, speculationBudget, 'speculationBudget')}"><span id="budget-${section}-${row.id}-speculationBudget-value" class="currency">${formatCurrency(speculationBudget)}</span></td>
               <td class="rounded-r-xl px-2 py-2 text-center"><button type="button" data-section="${section}" data-action="delete-row" data-id="${row.id}" class="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100">Delete</button></td>
             </tr>
           `;
@@ -1031,9 +1048,9 @@
             <td id="budget-total-${section}-actual" class="numeric-column-cell currency">${formatCurrency(totals.actual)}</td>
             <td id="budget-total-${section}-speculation" class="numeric-column-cell currency">${formatCurrency(totals.speculation)}</td>
             <td id="budget-total-${section}-budget" class="numeric-column-cell currency">${formatCurrency(totals.budget)}</td>
-            <td id="budget-total-${section}-actualBudget" class="numeric-column-cell ${getDiffClass(totalDiffs.actualBudget)} currency">${formatCurrency(totalDiffs.actualBudget)}</td>
-            <td id="budget-total-${section}-actualSpeculation" class="numeric-column-cell ${getDiffClass(totalDiffs.actualSpeculation)} currency">${formatCurrency(totalDiffs.actualSpeculation)}</td>
-            <td id="budget-total-${section}-speculationBudget" class="numeric-column-cell ${getDiffClass(totalDiffs.speculationBudget)} currency">${formatCurrency(totalDiffs.speculationBudget)}</td>
+            <td id="budget-total-${section}-actualBudget" class="numeric-column-cell ${getDiffClass(section, totalDiffs.actualBudget, 'actualBudget')} currency">${formatCurrency(totalDiffs.actualBudget)}</td>
+            <td id="budget-total-${section}-actualSpeculation" class="numeric-column-cell ${getDiffClass(section, totalDiffs.actualSpeculation, 'actualSpeculation')} currency">${formatCurrency(totalDiffs.actualSpeculation)}</td>
+            <td id="budget-total-${section}-speculationBudget" class="numeric-column-cell ${getDiffClass(section, totalDiffs.speculationBudget, 'speculationBudget')} currency">${formatCurrency(totalDiffs.speculationBudget)}</td>
             <td class="rounded-r-xl px-2 py-3 text-center">&nbsp;</td>
           </tr>
         `;
@@ -1056,7 +1073,7 @@
           const valueEl = document.getElementById(`budget-${section}-${rowId}-${key}-value`);
 
           if (cell) {
-            cell.className = `numeric-column-cell font-medium ${getDiffClass(value)}`;
+            cell.className = `numeric-column-cell font-medium ${getDiffClass(section, value, key)}`;
           }
 
           if (valueEl) {
@@ -1076,8 +1093,8 @@
 
         const totalDiffs = {
           actualBudget: section === 'income' ? totals.actual - totals.budget : totals.budget - totals.actual,
-          actualSpeculation: totals.speculation - totals.actual,
-          speculationBudget: totals.budget - totals.speculation
+          actualSpeculation: section === 'income' ? totals.actual - totals.speculation : totals.speculation - totals.actual,
+          speculationBudget: section === 'income' ? totals.speculation - totals.budget : totals.budget - totals.speculation
         };
 
         const totalFields = {
@@ -1095,7 +1112,8 @@
 
           const isDiffCell = id.includes('actualBudget') || id.includes('actualSpeculation') || id.includes('speculationBudget');
           if (isDiffCell) {
-            element.className = `numeric-column-cell ${getDiffClass(value)} currency`;
+            const key = id.endsWith('actualBudget') ? 'actualBudget' : id.endsWith('actualSpeculation') ? 'actualSpeculation' : 'speculationBudget';
+            element.className = `numeric-column-cell ${getDiffClass(section, value, key)} currency`;
           } else {
             element.className = `numeric-column-cell currency`;
           }
