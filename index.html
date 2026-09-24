@@ -165,7 +165,61 @@
 
       <main>
         <section id="tab-dashboard" class="tab-panel space-y-6">
-          <div id="summaryCards" class="grid gap-4 md:grid-cols-2 xl:grid-cols-5"></div>
+          <div class="space-y-4">
+            <div id="summaryCards" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+          </div>
+          <div id="analyticsCards" class="mt-6 grid w-full grid-cols-1 gap-6 md:grid-cols-3"></div>
+
+          <div id="sinkingFundsModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/40 p-4">
+            <div class="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white shadow-xl">
+              <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Sinking Funds</p>
+                  <h3 class="text-xl font-bold text-slate-900">Manage Funds</h3>
+                </div>
+                <button type="button" id="closeSinkingFundsModalBtn" class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900">Close</button>
+              </div>
+
+              <div class="space-y-5 p-5">
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div class="mb-3 flex items-center justify-between gap-3">
+                    <h4 class="text-sm font-bold uppercase tracking-wide text-slate-700">Current Funds</h4>
+                    <button type="button" id="addSinkingFundBtn" class="inline-flex items-center rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500">+ Add New Fund</button>
+                  </div>
+                  <div id="sinkingFundsList" class="space-y-3"></div>
+                </div>
+
+                <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                  <h4 id="sinkingFundFormTitle" class="text-sm font-bold uppercase tracking-wide text-slate-700">Add New Fund</h4>
+                  <form id="sinkingFundsForm" class="mt-4 space-y-4">
+                    <input id="sinkingFundId" type="hidden" />
+
+                    <div class="grid gap-4 md:grid-cols-2">
+                      <label class="block">
+                        <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Fund Name</span>
+                        <input id="sinkingFundName" type="text" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100" placeholder="Emergency Reserve" required />
+                      </label>
+
+                      <label class="block">
+                        <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Current Balance ($)</span>
+                        <input id="sinkingFundCurrentBalance" type="number" step="0.01" min="0" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100" placeholder="8200" required />
+                      </label>
+
+                      <label class="block md:col-span-2">
+                        <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Target Amount ($)</span>
+                        <input id="sinkingFundTargetAmount" type="number" step="0.01" min="0" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100" placeholder="15000" required />
+                      </label>
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-2">
+                      <button type="button" id="cancelSinkingFundEditBtn" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900">Cancel</button>
+                      <button type="submit" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500">Save Fund</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div class="space-y-6">
             <section class="w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -375,6 +429,8 @@
 
       const defaultState = () => ({
         startingBalance: 5400,
+        budgetMonth: new Date().getMonth() + 1,
+        budgetYear: new Date().getFullYear(),
         income: [
           { id: createId(), name: 'Salary', actual: 4300, speculation: 4300, budget: 4300 },
           { id: createId(), name: 'Freelance', actual: 450, speculation: 600, budget: 500 },
@@ -409,6 +465,11 @@
           { id: createId(), name: 'Emergency Fund', amount: 350, actual: 350, planned: 350, direction: 'outgoing' },
           { id: createId(), name: '401(k)', amount: 450, actual: 450, planned: 450, direction: 'outgoing' },
           { id: createId(), name: 'Family Support', amount: 150, actual: 150, planned: 150, direction: 'incoming' }
+        ],
+        sinkingFunds: [
+          { id: createId(), name: 'Emergency Reserve', currentBalance: 8200, targetAmount: 15000, monthlyAllocated: 1200 },
+          { id: createId(), name: 'Travel Fund', currentBalance: 1900, targetAmount: 3500, monthlyAllocated: 600 },
+          { id: createId(), name: 'Vehicle Maintenance', currentBalance: 2200, targetAmount: 5000, monthlyAllocated: 450 }
         ],
         debt: [
           { id: createId(), creditor: 'Visa', balance: 4200, rate: 18.9, minPayment: 125, paymentThisMonth: 180, order: 1, notes: 'High-interest card' },
@@ -453,6 +514,20 @@
         };
       }
 
+      function normalizeSinkingFund(row) {
+        const targetAmount = normalizeNumber(row.target_amount ?? row.targetAmount ?? row.target ?? 0, 0);
+        const currentBalance = normalizeNumber(row.current_balance ?? row.currentBalance ?? row.balance ?? 0, 0);
+        const monthlyAllocated = normalizeNumber(row.monthly_allocated ?? row.monthlyAllocated ?? 0, 0);
+
+        return {
+          id: row.id || createId(),
+          name: row.name || 'New Sinking Fund',
+          currentBalance,
+          targetAmount,
+          monthlyAllocated,
+        };
+      }
+
       function normalizeDebt(row) {
         return {
           id: row.id || createId(),
@@ -474,10 +549,13 @@
 
         return {
           startingBalance: normalizeNumber(rawData.startingBalance, fallback.startingBalance),
+          budgetMonth: normalizeNumber(rawData.budgetMonth, fallback.budgetMonth),
+          budgetYear: normalizeNumber(rawData.budgetYear, fallback.budgetYear),
           income: Array.isArray(rawData.income) ? rawData.income.map(normalizeRow) : fallback.income,
           expenses: Array.isArray(rawData.expenses) ? rawData.expenses.map(normalizeRow) : fallback.expenses,
           expenseTransfers: Array.isArray(rawData.expenseTransfers) ? rawData.expenseTransfers.map(normalizeRow) : fallback.expenseTransfers,
           transfers: Array.isArray(rawData.transfers) ? rawData.transfers.map(normalizeTransfer) : fallback.transfers,
+          sinkingFunds: Array.isArray(rawData.sinkingFunds) ? rawData.sinkingFunds.map(normalizeSinkingFund) : fallback.sinkingFunds,
           debt: Array.isArray(rawData.debt) ? rawData.debt.map(normalizeDebt) : fallback.debt,
         };
       }
@@ -537,6 +615,201 @@
           console.warn('Unable to save data to localStorage.', error);
           setStatusState('saved');
           statusTimer = window.setTimeout(() => setStatusState('idle'), 1500);
+        }
+      }
+
+      function renderSinkingFundsModal() {
+        const listEl = document.getElementById('sinkingFundsList');
+        if (!listEl) return;
+
+        if (!state.sinkingFunds || state.sinkingFunds.length === 0) {
+          listEl.innerHTML = '<p class="text-sm text-slate-500">No sinking funds yet. Add your first fund below.</p>';
+          return;
+        }
+
+        listEl.innerHTML = state.sinkingFunds.map((fund) => {
+          const targetAmount = normalizeNumber(fund.targetAmount ?? fund.target_amount ?? 0, 0);
+          const currentBalance = normalizeNumber(fund.currentBalance ?? fund.current_balance ?? 0, 0);
+          const progressPct = targetAmount > 0 ? Math.min(Math.max((currentBalance / targetAmount) * 100, 0), 100) : 0;
+
+          return `
+            <div class="rounded-xl border border-slate-200 bg-white p-3">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-semibold text-slate-800">${fund.name}</p>
+                  <p class="mt-1 text-xs text-slate-500">${formatCurrency(currentBalance)} / ${formatCurrency(targetAmount)}</p>
+                </div>
+                <div class="flex shrink-0 items-center gap-2">
+                  <button type="button" data-action="edit-sinking-fund" data-id="${fund.id}" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700">Edit</button>
+                  <button type="button" data-action="delete-sinking-fund" data-id="${fund.id}" class="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100">Delete</button>
+                </div>
+              </div>
+              <div class="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
+                <div class="h-full rounded-full bg-emerald-500" style="width: ${progressPct}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function resetSinkingFundForm() {
+        const form = document.getElementById('sinkingFundsForm');
+        const title = document.getElementById('sinkingFundFormTitle');
+        if (!form || !title) return;
+
+        form.reset();
+        document.getElementById('sinkingFundId').value = '';
+        title.textContent = 'Add New Fund';
+        const submitButton = form.querySelector('button[type="submit"]');
+        if (submitButton) {
+          submitButton.textContent = 'Save Fund';
+        }
+      }
+
+      function openSinkingFundsModal() {
+        renderSinkingFundsModal();
+        resetSinkingFundForm();
+        const modal = document.getElementById('sinkingFundsModal');
+        if (modal) {
+          modal.classList.remove('hidden');
+          modal.classList.add('flex');
+        }
+      }
+
+      function closeSinkingFundsModal() {
+        const modal = document.getElementById('sinkingFundsModal');
+        if (modal) {
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+        }
+      }
+
+      function saveSinkingFundEntry(event) {
+        event.preventDefault();
+        const id = document.getElementById('sinkingFundId').value;
+        const name = document.getElementById('sinkingFundName').value.trim();
+        const currentBalance = normalizeNumber(document.getElementById('sinkingFundCurrentBalance').value, 0);
+        const targetAmount = normalizeNumber(document.getElementById('sinkingFundTargetAmount').value, 0);
+
+        if (!name) {
+          window.alert('Fund name is required.');
+          return;
+        }
+
+        const entry = {
+          id: id || createId(),
+          name,
+          currentBalance,
+          targetAmount,
+          monthlyAllocated: 0,
+        };
+
+        if (id) {
+          state.sinkingFunds = (state.sinkingFunds || []).map((fund) => (fund.id === id ? { ...fund, ...entry } : fund));
+        } else {
+          state.sinkingFunds = [...(state.sinkingFunds || []), entry];
+        }
+
+        persistLocalState();
+        renderAll();
+        closeSinkingFundsModal();
+        resetSinkingFundForm();
+      }
+
+      function beginEditSinkingFund(fundId) {
+        const fund = (state.sinkingFunds || []).find((item) => item.id === fundId);
+        if (!fund) return;
+
+        document.getElementById('sinkingFundId').value = fund.id;
+        document.getElementById('sinkingFundName').value = fund.name || '';
+        document.getElementById('sinkingFundCurrentBalance').value = Number(fund.currentBalance ?? fund.current_balance ?? 0);
+        document.getElementById('sinkingFundTargetAmount').value = Number(fund.targetAmount ?? fund.target_amount ?? 0);
+
+        const title = document.getElementById('sinkingFundFormTitle');
+        if (title) title.textContent = 'Edit Fund';
+
+        const submitButton = document.querySelector('#sinkingFundsForm button[type="submit"]');
+        if (submitButton) {
+          submitButton.textContent = 'Update Fund';
+        }
+      }
+
+      function deleteSinkingFund(fundId) {
+        const fund = (state.sinkingFunds || []).find((item) => item.id === fundId);
+        if (!fund) return;
+
+        const confirmed = window.confirm(`Delete "${fund.name}" from your sinking funds?`);
+        if (!confirmed) return;
+
+        state.sinkingFunds = (state.sinkingFunds || []).filter((item) => item.id !== fundId);
+        persistLocalState();
+        renderAll();
+        renderSinkingFundsModal();
+
+        if (document.getElementById('sinkingFundsModal')?.classList.contains('flex')) {
+          resetSinkingFundForm();
+        }
+      }
+
+      function handleSinkingFundsModalClick(event) {
+        const target = event.target.closest('button');
+        if (!target) return;
+
+        const action = target.dataset.action;
+        if (action === 'delete-sinking-fund') {
+          deleteSinkingFund(target.dataset.id);
+          return;
+        }
+
+        if (action === 'edit-sinking-fund') {
+          beginEditSinkingFund(target.dataset.id);
+          return;
+        }
+
+        if (target.id === 'manageSinkingFundsBtn' || target.id === 'addSinkingFundBtn') {
+          openSinkingFundsModal();
+          return;
+        }
+
+        if (target.id === 'closeSinkingFundsModalBtn' || target.id === 'cancelSinkingFundEditBtn') {
+          closeSinkingFundsModal();
+          resetSinkingFundForm();
+        }
+      }
+
+      function attachSinkingFundsEvents() {
+        const manageBtn = document.getElementById('manageSinkingFundsBtn');
+        if (manageBtn) {
+          manageBtn.addEventListener('click', openSinkingFundsModal);
+        }
+
+        const addBtn = document.getElementById('addSinkingFundBtn');
+        if (addBtn) {
+          addBtn.addEventListener('click', () => {
+            resetSinkingFundForm();
+            openSinkingFundsModal();
+          });
+        }
+
+        const closeBtn = document.getElementById('closeSinkingFundsModalBtn');
+        if (closeBtn) {
+          closeBtn.addEventListener('click', () => {
+            closeSinkingFundsModal();
+            resetSinkingFundForm();
+          });
+        }
+
+        const cancelBtn = document.getElementById('cancelSinkingFundEditBtn');
+        if (cancelBtn) {
+          cancelBtn.addEventListener('click', () => {
+            closeSinkingFundsModal();
+            resetSinkingFundForm();
+          });
+        }
+
+        const form = document.getElementById('sinkingFundsForm');
+        if (form) {
+          form.addEventListener('submit', saveSinkingFundEntry);
         }
       }
 
@@ -896,6 +1169,112 @@
         return value < 0 ? 'text-red-600' : 'text-slate-800';
       }
 
+      function renderAnalyticWidgets() {
+        const income = getSectionTotals('income');
+        const expenses = getSectionTotals('expenses');
+        const expenseTransfers = getSectionTotals('expenseTransfers');
+        const monthPacing = window.BudgetRollup ? window.BudgetRollup.calculateMonthPacing({
+          budgetMonth: state.budgetMonth || new Date().getMonth() + 1,
+          budgetYear: state.budgetYear || new Date().getFullYear(),
+          currentDay: new Date().getDate(),
+          actualExpenses: expenses.actual,
+          budgetedExpenses: expenses.budget,
+        }) : null;
+        const expenseMix = window.BudgetRollup ? window.BudgetRollup.calculateExpenseCategoryMix(state.expenses || []) : null;
+        const safeToSpend = window.BudgetRollup ? window.BudgetRollup.calculateSafeToSpend({
+          totalBudgetedExpenses: expenses.budget,
+          actualFixedExpenses: expenseMix ? expenseMix.actualFixedExpenses : 0,
+          actualDiscretionaryExpenses: expenseMix ? expenseMix.actualDiscretionaryExpenses : 0,
+          budgetMonth: state.budgetMonth || new Date().getMonth() + 1,
+          budgetYear: state.budgetYear || new Date().getFullYear(),
+          currentDay: monthPacing ? monthPacing.currentDay : new Date().getDate(),
+        }) : null;
+
+        const pacingBadgeClasses = monthPacing && monthPacing.isOverPacing ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700';
+        const safeSpendClasses = safeToSpend && safeToSpend.isNegative ? 'text-rose-600' : 'text-emerald-600';
+
+        const sinkCards = (state.sinkingFunds || []).map((fund) => {
+          const fundProgress = window.BudgetRollup ? window.BudgetRollup.calculateSinkingFundProgress({
+            name: fund.name,
+            currentBalance: fund.currentBalance ?? fund.current_balance,
+            targetAmount: fund.targetAmount ?? fund.target_amount,
+            monthlyAllocated: fund.monthlyAllocated ?? fund.monthly_allocated,
+          }) : { name: fund.name, progressPct: 0, remainingAmount: 0, monthlyAllocated: 0 };
+          const pct = Number.isFinite(fundProgress.progressPct) ? Math.min(Math.max(fundProgress.progressPct, 0), 100) : 0;
+          const monthlyAllocated = Number(fund.monthlyAllocated ?? fund.monthly_allocated ?? fundProgress.monthlyAllocated ?? 0);
+          return `
+            <div class="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-semibold text-slate-800">${fundProgress.name}</p>
+                  <p class="mt-0.5 text-[11px] text-slate-500">${monthlyAllocated > 0 ? `Allocated this month: ${formatCurrency(monthlyAllocated)}` : `Target: ${formatCurrency(fundProgress.targetAmount)}`}</p>
+                </div>
+                <span class="shrink-0 rounded-full bg-slate-200 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-700">${pct.toFixed(0)}%</span>
+              </div>
+              <div class="mt-3">
+                <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
+                  <div class="h-full rounded-full bg-indigo-500" style="width: ${pct}%"></div>
+                </div>
+              </div>
+              <p class="mt-2 text-xs text-slate-600">Remaining: <span class="font-semibold">${formatCurrency(fundProgress.remainingAmount)}</span></p>
+            </div>
+          `;
+        }).join('');
+
+        const analyticsHtml = `
+          <div class="flex h-full min-h-[220px] flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Month Pacing</p>
+                <h3 class="mt-1 text-lg font-bold text-slate-900">Spend Progress</h3>
+              </div>
+              <span class="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${pacingBadgeClasses}">
+                ${monthPacing ? monthPacing.badgeText : 'On Track'}
+              </span>
+            </div>
+            <div class="mt-2 space-y-3">
+              <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
+                <div class="h-full rounded-full bg-amber-500" style="width: ${Math.min(Math.max(monthPacing ? monthPacing.spendPct : 0, 0), 100)}%"></div>
+              </div>
+              <div class="flex items-center justify-between gap-2 text-xs text-slate-600">
+                <span>Actual spend: ${monthPacing ? `${monthPacing.spendPct.toFixed(1)}%` : '0.0%'}</span>
+                <span>Day ${monthPacing ? monthPacing.currentDay : 1} of ${monthPacing ? monthPacing.daysInMonth : 30}</span>
+              </div>
+              <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                ${monthPacing ? `${monthPacing.currentDay} / ${monthPacing.daysInMonth} days elapsed • ${monthPacing.monthElapsedPct.toFixed(1)}% of month` : 'Month pacing unavailable'}
+              </div>
+            </div>
+          </div>
+
+          <div class="flex h-full min-h-[220px] flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Safe-to-Spend</p>
+              <h3 class="mt-1 text-lg font-bold text-slate-900">Daily Allowance</h3>
+            </div>
+            <div class="mt-4 space-y-3">
+              <p class="text-3xl font-bold leading-tight ${safeSpendClasses}">${safeToSpend ? formatCurrency(safeToSpend.safeToSpend) : formatCurrency(0)}</p>
+              <p class="text-sm text-slate-600">${safeToSpend ? formatCurrency(safeToSpend.dailyAllowance) : formatCurrency(0)} / day remaining</p>
+              <p class="text-xs text-slate-500">${safeToSpend ? `${safeToSpend.daysRemaining} day${safeToSpend.daysRemaining === 1 ? '' : 's'} left in this cycle` : 'Days remaining unavailable'}</p>
+            </div>
+          </div>
+
+          <div class="flex h-full min-h-[220px] flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Sinking Funds</p>
+                <h3 class="mt-1 text-lg font-bold text-slate-900">Target Progress</h3>
+              </div>
+              <button type="button" id="manageSinkingFundsBtn" class="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700">Manage Funds</button>
+            </div>
+            <div class="mt-2 space-y-3">
+              ${sinkCards || '<p class="text-sm text-slate-500">No sinking funds configured.</p>'}
+            </div>
+          </div>
+        `;
+
+        document.getElementById('analyticsCards').innerHTML = analyticsHtml;
+      }
+
       function renderSummaryCards() {
         const income = getSectionTotals('income');
         const expenses = getSectionTotals('expenses');
@@ -975,7 +1354,7 @@
         ];
 
         const html = cards.map((card) => `
-          <div class="rounded-2xl border p-4 shadow-sm ${card.tone}">
+          <div class="flex h-full min-h-[180px] flex-col rounded-2xl border p-4 shadow-sm ${card.tone}">
             <div class="flex flex-col gap-1">
               <p class="text-sm font-semibold">${card.title}</p>
               ${card.subtitle ? `<p class="text-[10px] font-medium uppercase tracking-wide text-slate-500">${card.subtitle}</p>` : ''}
@@ -1533,6 +1912,7 @@
 
       function renderAll() {
         renderSummaryCards();
+        renderAnalyticWidgets();
         renderBudgetTable('income');
         renderBudgetTable('expenses');
         renderBudgetTable('expenseTransfers');
@@ -1785,6 +2165,7 @@
       document.addEventListener('input', handleTableInput);
       document.addEventListener('change', handleTableInput);
       document.addEventListener('click', handleDeleteAction);
+      document.addEventListener('click', handleSinkingFundsModalClick);
 
       document.getElementById('startingBalance').addEventListener('input', (event) => {
         state.startingBalance = normalizeNumber(event.target.value, 0);
@@ -1803,6 +2184,7 @@
         persistLocalState();
       }, true);
 
+      attachSinkingFundsEvents();
       loadState();
       renderAll();
     </script>

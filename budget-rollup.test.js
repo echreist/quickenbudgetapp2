@@ -2,6 +2,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   calculateMonthlyNetSavingsRollup,
+  calculateMonthPacing,
+  calculateSafeToSpend,
+  calculateSinkingFundProgress,
   getVarianceState,
   getVarianceClass,
 } = require('./budget-rollup.js');
@@ -85,4 +88,81 @@ test('expenseTransfers alias still produces the same retained-savings path', () 
   assert.equal(rollup.actualNet, 800);
   assert.equal(rollup.netVariance, -50);
   assert.equal(rollup.savingsTransfersActual, 1100);
+});
+
+test('month pacing flags overspending and tracks daily progress correctly', () => {
+  const pacing = calculateMonthPacing({
+    budgetMonth: 30,
+    budgetYear: 2026,
+    currentDay: 18,
+    actualExpenses: 6400,
+    budgetedExpenses: 5200,
+  });
+
+  assert.equal(pacing.daysInMonth, 30);
+  assert.equal(pacing.currentDay, 18);
+  assert.equal(pacing.monthElapsedPct, 60);
+  assert.ok(pacing.isOverPacing);
+  assert.equal(pacing.status, 'warning');
+  assert.equal(pacing.badgeText, 'Over Pacing by +63.1%');
+
+  const startOfMonth = calculateMonthPacing({
+    budgetMonth: 30,
+    budgetYear: 2026,
+    currentDay: 1,
+    actualExpenses: 1000,
+    budgetedExpenses: 5000,
+  });
+  assert.equal(startOfMonth.monthElapsedPct, 3.3333333333333335);
+  assert.equal(startOfMonth.badgeText, 'Over Pacing by +16.7%');
+
+  const endOfMonth = calculateMonthPacing({
+    budgetMonth: 30,
+    budgetYear: 2026,
+    currentDay: 30,
+    actualExpenses: 5000,
+    budgetedExpenses: 5000,
+  });
+  assert.equal(endOfMonth.monthElapsedPct, 100);
+  assert.equal(endOfMonth.pacingDelta, 0);
+});
+
+test('safe-to-spend and sinking fund progress guard zero and negative scenarios', () => {
+  const safeToSpend = calculateSafeToSpend({
+    totalBudgetedExpenses: 5000,
+    actualFixedExpenses: 3900,
+    actualDiscretionaryExpenses: 2100,
+    budgetMonth: 30,
+    budgetYear: 2026,
+    currentDay: 18,
+  });
+  const fundProgress = calculateSinkingFundProgress({
+    name: 'Emergency Reserve',
+    target_amount: 15000,
+    current_balance: 8200,
+    monthly_allocated: 1200,
+  });
+
+  assert.equal(safeToSpend.safeToSpend, -1000);
+  assert.equal(safeToSpend.daysRemaining, 13);
+  assert.equal(safeToSpend.dailyAllowance, -76.92307692307692);
+  assert.equal(fundProgress.progressPct, 54.666666666666664);
+  assert.equal(fundProgress.remainingAmount, 6800);
+  assert.equal(fundProgress.isComplete, false);
+});
+
+test('sinking fund calculations accept the modern currentBalance and targetAmount fields', () => {
+  const fundProgress = calculateSinkingFundProgress({
+    name: 'Travel Fund',
+    currentBalance: 1900,
+    targetAmount: 3500,
+    monthlyAllocated: 600,
+  });
+
+  assert.equal(fundProgress.name, 'Travel Fund');
+  assert.equal(fundProgress.currentBalance, 1900);
+  assert.equal(fundProgress.targetAmount, 3500);
+  assert.equal(fundProgress.progressPct, 54.285714285714285);
+  assert.equal(fundProgress.remainingAmount, 1600);
+  assert.equal(fundProgress.isComplete, false);
 });

@@ -4,6 +4,34 @@
     return Number.isFinite(number) ? number : fallback;
   }
 
+  function toFiniteNumber(value, fallback = 0) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : fallback;
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function safeDivide(numerator, denominator) {
+    if (!Number.isFinite(denominator) || denominator === 0) {
+      return 0;
+    }
+
+    return Number(numerator) / Number(denominator);
+  }
+
+  function getDaysInMonth(month, year) {
+    const normalizedMonth = Number(month);
+    const normalizedYear = Number(year);
+
+    if (!Number.isFinite(normalizedMonth) || !Number.isFinite(normalizedYear) || normalizedMonth < 1 || normalizedMonth > 12) {
+      return 30;
+    }
+
+    return new Date(normalizedYear, normalizedMonth, 0).getDate();
+  }
+
   function formatCurrency(value) {
     const raw = value === null || value === undefined || value === '' ? 0 : Number(value);
     const numericValue = Number.isFinite(raw) ? raw : 0;
@@ -32,11 +60,7 @@
   }
 
   function safePercent(numerator, denominator) {
-    if (!Number.isFinite(denominator) || denominator === 0) {
-      return 0;
-    }
-
-    return (Number(numerator) / Number(denominator)) * 100;
+    return safeDivide(numerator, denominator) * 100;
   }
 
   function getVarianceState(value) {
@@ -56,6 +80,104 @@
       default:
         return 'text-slate-500';
     }
+  }
+
+  function calculateExpenseCategoryMix(expenseRows = []) {
+    const rows = Array.isArray(expenseRows) ? expenseRows : [];
+    const fixedKeywords = /(mortgage|rent|utility|utilities|insurance|loan|mortgage|phone|internet|cell|water|electric|gas|tax|escrow|medical|healthcare|childcare|maintenance)/i;
+    const discretionaryKeywords = /(dining|restaurant|entertainment|shopping|travel|gift|hobby|coffee|leisure|fun|vacation|streaming)/i;
+
+    const fixedRows = rows.filter((row) => {
+      const name = String(row && row.name ? row.name : '').toLowerCase();
+      return fixedKeywords.test(name) && !discretionaryKeywords.test(name);
+    });
+
+    const discretionaryRows = rows.filter((row) => {
+      const name = String(row && row.name ? row.name : '').toLowerCase();
+      return discretionaryKeywords.test(name) || (!fixedKeywords.test(name) && !name.includes('savings'));
+    });
+
+    const actualFixedExpenses = fixedRows.reduce((sum, row) => sum + toFiniteNumber(row.actual, 0), 0);
+    const actualDiscretionaryExpenses = discretionaryRows.reduce((sum, row) => sum + toFiniteNumber(row.actual, 0), 0);
+    const budgetFixedExpenses = fixedRows.reduce((sum, row) => sum + toFiniteNumber(row.budget, 0), 0);
+    const budgetDiscretionaryExpenses = discretionaryRows.reduce((sum, row) => sum + toFiniteNumber(row.budget, 0), 0);
+
+    return {
+      fixedRows,
+      discretionaryRows,
+      actualFixedExpenses,
+      actualDiscretionaryExpenses,
+      budgetFixedExpenses,
+      budgetDiscretionaryExpenses,
+    };
+  }
+
+  function calculateMonthPacing({
+    budgetMonth = new Date().getMonth() + 1,
+    budgetYear = new Date().getFullYear(),
+    currentDay = new Date().getDate(),
+    actualExpenses = 0,
+    budgetedExpenses = 0,
+  } = {}) {
+    const daysInMonth = getDaysInMonth(budgetMonth, budgetYear);
+    const clampedCurrentDay = clamp(toFiniteNumber(currentDay, 1), 1, daysInMonth);
+    const monthElapsedPct = safeDivide(clampedCurrentDay, daysInMonth) * 100;
+    const spendPct = safeDivide(actualExpenses, budgetedExpenses) * 100;
+    const pacingDelta = spendPct - monthElapsedPct;
+    const isOverPacing = pacingDelta > 5;
+    const badgeText = isOverPacing ? `Over Pacing by +${Math.abs(pacingDelta).toFixed(1)}%` : 'On Track';
+
+    return {
+      daysInMonth,
+      currentDay: clampedCurrentDay,
+      monthElapsedPct,
+      spendPct,
+      pacingDelta,
+      isOverPacing,
+      status: isOverPacing ? 'warning' : 'favorable',
+      badgeText,
+      daysRemaining: Math.max(1, daysInMonth - clampedCurrentDay + 1),
+    };
+  }
+
+  function calculateSafeToSpend({
+    totalBudgetedExpenses = 0,
+    actualFixedExpenses = 0,
+    actualDiscretionaryExpenses = 0,
+    budgetMonth = new Date().getMonth() + 1,
+    budgetYear = new Date().getFullYear(),
+    currentDay = new Date().getDate(),
+  } = {}) {
+    const daysInMonth = getDaysInMonth(budgetMonth, budgetYear);
+    const clampedCurrentDay = clamp(toFiniteNumber(currentDay, 1), 1, daysInMonth);
+    const safeToSpend = (toFiniteNumber(totalBudgetedExpenses, 0) - toFiniteNumber(actualFixedExpenses, 0)) - toFiniteNumber(actualDiscretionaryExpenses, 0);
+    const daysRemaining = Math.max(1, daysInMonth - clampedCurrentDay + 1);
+    const dailyAllowance = safeDivide(safeToSpend, daysRemaining);
+
+    return {
+      safeToSpend,
+      daysInMonth,
+      currentDay: clampedCurrentDay,
+      daysRemaining,
+      dailyAllowance,
+      isNegative: safeToSpend < 0,
+    };
+  }
+
+  function calculateSinkingFundProgress(fund = {}) {
+    const targetAmount = toFiniteNumber(fund.target_amount ?? fund.targetAmount ?? 0, 0);
+    const currentBalance = toFiniteNumber(fund.current_balance ?? fund.currentBalance ?? 0, 0);
+    const monthlyAllocated = toFiniteNumber(fund.monthly_allocated ?? fund.monthlyAllocated ?? 0, 0);
+
+    return {
+      name: fund.name || 'Sinking Fund',
+      targetAmount,
+      currentBalance,
+      monthlyAllocated,
+      progressPct: safeDivide(currentBalance, targetAmount) * 100,
+      remainingAmount: targetAmount - currentBalance,
+      isComplete: targetAmount > 0 && currentBalance >= targetAmount,
+    };
   }
 
   function calculateMonthlyNetSavingsRollup(data = {}) {
@@ -109,6 +231,10 @@
 
   const api = {
     calculateMonthlyNetSavingsRollup,
+    calculateExpenseCategoryMix,
+    calculateMonthPacing,
+    calculateSafeToSpend,
+    calculateSinkingFundProgress,
     getVarianceState,
     getVarianceClass,
     formatCurrency,
