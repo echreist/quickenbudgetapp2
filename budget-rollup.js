@@ -4,6 +4,19 @@
     return Number.isFinite(number) ? number : fallback;
   }
 
+  function formatCurrency(value) {
+    const raw = value === null || value === undefined || value === '' ? 0 : Number(value);
+    const numericValue = Number.isFinite(raw) ? raw : 0;
+    const formatter = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+    return formatter.format(numericValue);
+  }
+
   function resolveAmount(entry, keys = ['planned', 'budget', 'target', 'expected']) {
     if (!entry || typeof entry !== 'object') {
       return 0;
@@ -83,6 +96,7 @@
     calculateMonthlyNetSavingsRollup,
     getVarianceState,
     getVarianceClass,
+    formatCurrency,
   };
 
   global.BudgetRollup = api;

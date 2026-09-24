@@ -789,12 +789,14 @@
       }
 
       function formatCurrency(value) {
+        const numericValue = value === null || value === undefined || value === '' ? 0 : Number(value);
+        const safeValue = Number.isFinite(numericValue) ? numericValue : 0;
         return new Intl.NumberFormat('en-US', {
           style: 'currency',
           currency: 'USD',
+          minimumFractionDigits: 2,
           maximumFractionDigits: 2,
-          minimumFractionDigits: 0
-        }).format(Number(value) || 0);
+        }).format(safeValue);
       }
 
       function toNumber(value) {
