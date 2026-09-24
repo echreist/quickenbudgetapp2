@@ -57,3 +57,32 @@ test('zero-baseline edge cases do not divide by zero and stay neutral', () => {
   assert.equal(getVarianceState(0), 'neutral');
   assert.equal(getVarianceClass('neutral'), 'text-slate-500');
 });
+
+test('operating cash surplus is separated from retained net savings after transfer allocations', () => {
+  const rollup = calculateMonthlyNetSavingsRollup({
+    income: { planned: 6200, actual: 5800 },
+    expenses: { planned: 4400, actual: 3900 },
+    savingsTransfers: { planned: 950, actual: 1100 },
+  });
+
+  assert.equal(rollup.operatingSurplusPlanned, 1800);
+  assert.equal(rollup.operatingSurplusActual, 1900);
+  assert.equal(rollup.plannedNet, 850);
+  assert.equal(rollup.actualNet, 800);
+  assert.equal(rollup.netVariance, -50);
+  assert.equal(rollup.netVarianceState, 'unfavorable');
+  assert.ok(Math.abs(rollup.actualSavingsRate - 13.793103448275862) < 0.0001);
+});
+
+test('expenseTransfers alias still produces the same retained-savings path', () => {
+  const rollup = calculateMonthlyNetSavingsRollup({
+    income: { planned: 6200, actual: 5800 },
+    expenses: { planned: 4400, actual: 3900 },
+    expenseTransfers: { planned: 950, actual: 1100 },
+  });
+
+  assert.equal(rollup.operatingSurplusActual, 1900);
+  assert.equal(rollup.actualNet, 800);
+  assert.equal(rollup.netVariance, -50);
+  assert.equal(rollup.savingsTransfersActual, 1100);
+});

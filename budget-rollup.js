@@ -61,31 +61,46 @@
   function calculateMonthlyNetSavingsRollup(data = {}) {
     const income = data.income || {};
     const expenses = data.expenses || {};
+    const savingsTransfers = data.savingsTransfers || data.expenseTransfers || {};
 
     const incomePlanned = resolveAmount(income, ['planned', 'budget', 'target', 'expected']);
     const incomeActual = normalizeNumber(income.actual ?? income.actualAmount ?? income.value ?? 0, 0);
     const expensePlanned = resolveAmount(expenses, ['planned', 'budget', 'target', 'expected']);
     const expenseActual = normalizeNumber(expenses.actual ?? expenses.actualAmount ?? expenses.value ?? 0, 0);
+    const savingsPlanned = resolveAmount(savingsTransfers, ['planned', 'budget', 'target', 'expected']);
+    const savingsActual = normalizeNumber(
+      savingsTransfers.actual ?? savingsTransfers.actualAmount ?? savingsTransfers.value ?? 0,
+      0,
+    );
 
-    const plannedNet = incomePlanned - expensePlanned;
-    const actualNet = incomeActual - expenseActual;
+    const operatingSurplusPlanned = incomePlanned - expensePlanned;
+    const operatingSurplusActual = incomeActual - expenseActual;
+    const plannedNet = operatingSurplusPlanned - savingsPlanned;
+    const actualNet = operatingSurplusActual - savingsActual;
     const netVariance = actualNet - plannedNet;
     const incomeVariance = incomeActual - incomePlanned;
     const expenseVariance = expenseActual - expensePlanned;
+    const savingsVariance = savingsActual - savingsPlanned;
 
     return {
       incomePlanned,
       incomeActual,
       expensePlanned,
       expenseActual,
+      savingsTransfersPlanned: savingsPlanned,
+      savingsTransfersActual: savingsActual,
+      operatingSurplusPlanned,
+      operatingSurplusActual,
       plannedNet,
       actualNet,
       netVariance,
       incomeVariance,
       expenseVariance,
+      savingsVariance,
       netVarianceState: getVarianceState(netVariance),
       incomeVarianceState: getVarianceState(incomeVariance),
       expenseVarianceState: getVarianceState(-expenseVariance),
+      savingsTransfersState: getVarianceState(savingsVariance),
       plannedSavingsRate: safePercent(plannedNet, incomePlanned),
       actualSavingsRate: safePercent(actualNet, incomeActual),
       varianceSavingsRate: safePercent(netVariance, incomeActual),

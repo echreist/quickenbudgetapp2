@@ -887,7 +887,7 @@
       }
 
       function getSummaryValueClass(cardKey, value) {
-        if (cardKey === 'net' || cardKey === 'bottom-line' || cardKey === 'monthly-net-savings') {
+        if (cardKey === 'net' || cardKey === 'operating-cash' || cardKey === 'bottom-line' || cardKey === 'monthly-net-savings') {
           if (value > 0) return 'text-emerald-600';
           if (value < 0) return 'text-red-600';
           return 'text-slate-500';
@@ -904,6 +904,7 @@
         const monthlySavings = window.BudgetRollup ? window.BudgetRollup.calculateMonthlyNetSavingsRollup({
           income: { planned: income.budget, actual: income.actual },
           expenses: { planned: expenses.budget, actual: expenses.actual },
+          savingsTransfers: { planned: expenseTransfers.budget, actual: expenseTransfers.actual },
         }) : null;
 
         const cards = [
@@ -938,8 +939,9 @@
             tone: 'bg-cyan-50 text-cyan-900 border-cyan-100'
           },
           {
-            title: 'Income - Expense (not transfer)',
-            key: 'net',
+            title: 'Operating Cash Surplus',
+            key: 'operating-cash',
+            subtitle: 'Pre-transfer operational margin',
             values: [
               { label: 'Actual', value: net.actual },
               { label: 'Speculation', value: net.speculation },
@@ -950,6 +952,7 @@
           ...(monthlySavings ? [{
             title: 'Monthly Net Savings Rollup',
             key: 'monthly-net-savings',
+            subtitle: 'Retained savings after savings transfers',
             values: [
               { label: 'Planned', value: monthlySavings.plannedNet },
               { label: 'Actual', value: monthlySavings.actualNet },
@@ -961,6 +964,7 @@
           {
             title: 'Bottom Line',
             key: 'bottom-line',
+            subtitle: 'Cash remaining after all transfers and allocations',
             values: [
               { label: 'Actual', value: net.actualAfterTransfers },
               { label: 'Speculation', value: net.speculationAfterTransfers },
@@ -972,7 +976,10 @@
 
         const html = cards.map((card) => `
           <div class="rounded-2xl border p-4 shadow-sm ${card.tone}">
-            <p class="text-sm font-semibold">${card.title}</p>
+            <div class="flex flex-col gap-1">
+              <p class="text-sm font-semibold">${card.title}</p>
+              ${card.subtitle ? `<p class="text-[10px] font-medium uppercase tracking-wide text-slate-500">${card.subtitle}</p>` : ''}
+            </div>
             <div class="mt-3 space-y-1">
               ${card.values.map((entry) => {
                 const labelKey = entry.label === 'Savings Rate' ? 'rate' : entry.label.toLowerCase();
@@ -1001,6 +1008,7 @@
         const monthlySavings = window.BudgetRollup ? window.BudgetRollup.calculateMonthlyNetSavingsRollup({
           income: { planned: income.budget, actual: income.actual },
           expenses: { planned: expenses.budget, actual: expenses.actual },
+          savingsTransfers: { planned: expenseTransfers.budget, actual: expenseTransfers.actual },
         }) : null;
 
         const values = {
@@ -1013,9 +1021,9 @@
           'summary-transfers-actual': expenseTransfers.actual,
           'summary-transfers-speculation': expenseTransfers.speculation,
           'summary-transfers-budget': expenseTransfers.budget,
-          'summary-net-actual': net.actual,
-          'summary-net-speculation': net.speculation,
-          'summary-net-budget': net.budget,
+          'summary-operating-cash-actual': net.actual,
+          'summary-operating-cash-speculation': net.speculation,
+          'summary-operating-cash-budget': net.budget,
           'summary-monthly-net-savings-planned': monthlySavings ? monthlySavings.plannedNet : 0,
           'summary-monthly-net-savings-actual': monthlySavings ? monthlySavings.actualNet : 0,
           'summary-monthly-net-savings-variance': monthlySavings ? monthlySavings.netVariance : 0,
