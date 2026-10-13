@@ -1176,21 +1176,27 @@
       }
 
       function getDebtPaymentBreakdown() {
-        return state.debt.reduce((totals, debt) => {
-          const minimum = Number(debt.minPayment) || 0;
-          const payment = Number(debt.paymentThisMonth) || 0;
-          totals.baselineMinimums += minimum;
-          totals.extraPrincipal += Math.max(payment - minimum, 0);
-          return totals;
-        }, { baselineMinimums: 0, extraPrincipal: 0 });
+        const baselineMinimums = state.debt.reduce((total, debt) => total + (Number(debt.minPayment) || 0), 0);
+        const debtTransferPattern = /\b(?:credit(?:\s+card)?|card|loan|mortgage|debt|visa|mastercard|amex|american express|discover|citi|citibank|capital one|chase|synchrony|barclays|wells fargo|bank of america|blue cash|costco)\b/i;
+        const extraPrincipal = (state.expenseTransfers || []).reduce((total, transfer) => {
+          const transferName = String(transfer.name || '').replace(/^\s*to\s+/i, '').trim().toLowerCase();
+          const matchesTrackedDebt = (state.debt || []).some((debt) => {
+            const creditor = String(debt.creditor || '').trim().toLowerCase();
+            return creditor.length > 0 && transferName.includes(creditor);
+          });
+          if (!matchesTrackedDebt && !debtTransferPattern.test(transferName)) return total;
+          return total + Math.max((Number(transfer.actual) || 0) - (Number(transfer.budget) || 0), 0);
+        }, 0);
+
+        return { baselineMinimums, extraPrincipal };
       }
 
-      function getNetCheckingStatus(operatingCashFlow, netCheckingCashFlow, livingDeficit, extraPrincipal) {
-        if (livingDeficit) {
+      function getNetCheckingStatus(operatingCashFlow, netCheckingCashFlow, extraPrincipal) {
+        if (operatingCashFlow < 0) {
           return { label: 'Over Budget / Deficit', classes: 'border-rose-200 bg-rose-50 text-rose-700' };
         }
         if (operatingCashFlow > 0 && netCheckingCashFlow < 0 && extraPrincipal > 0) {
-          return { label: 'Planned Debt Acceleration', classes: 'border-blue-200 bg-blue-50 text-blue-700' };
+          return { label: 'Planned Debt Acceleration / Balance Drawdown', classes: 'border-blue-200 bg-blue-50 text-blue-700' };
         }
         if (operatingCashFlow > 0 && netCheckingCashFlow < 0) {
           return { label: 'Planned Transfers', classes: 'border-amber-200 bg-amber-50 text-amber-700' };
@@ -1310,7 +1316,7 @@
         const expenseTransfers = getSectionTotals('expenseTransfers');
         const net = getNetTotals();
         const debtPayments = getDebtPaymentBreakdown();
-        const netCheckingStatus = getNetCheckingStatus(net.actual, net.actualAfterTransfers, expenses.actual > income.actual, debtPayments.extraPrincipal);
+        const netCheckingStatus = getNetCheckingStatus(net.speculation, net.speculationAfterTransfers, debtPayments.extraPrincipal);
         const monthlySavings = window.BudgetRollup ? window.BudgetRollup.calculateMonthlyNetSavingsRollup({
           income: { planned: income.budget, actual: income.actual },
           expenses: { planned: expenses.budget, actual: expenses.actual },
@@ -1350,7 +1356,7 @@
             details: `
               <div class="mt-3 flex flex-wrap gap-2">
                 <span class="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 text-[10px] font-semibold text-slate-600">Baseline Minimums <span id="summary-transfers-baseline-minimums" class="currency">${formatCurrency(debtPayments.baselineMinimums)}</span></span>
-                <span class="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold text-indigo-700">Extra Principal Paid <span id="summary-transfers-extra-principal" class="currency">${formatCurrency(debtPayments.extraPrincipal)}</span></span>
+                <span class="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold text-indigo-700">Extra Principal Paid: <span id="summary-transfers-extra-principal" class="currency">${formatCurrency(debtPayments.extraPrincipal)}</span></span>
               </div>
             `,
             tone: 'bg-cyan-50 text-cyan-900 border-cyan-100'
@@ -1426,7 +1432,7 @@
         const expenseTransfers = getSectionTotals('expenseTransfers');
         const net = getNetTotals();
         const debtPayments = getDebtPaymentBreakdown();
-        const netCheckingStatus = getNetCheckingStatus(net.actual, net.actualAfterTransfers, expenses.actual > income.actual, debtPayments.extraPrincipal);
+        const netCheckingStatus = getNetCheckingStatus(net.speculation, net.speculationAfterTransfers, debtPayments.extraPrincipal);
         const monthlySavings = window.BudgetRollup ? window.BudgetRollup.calculateMonthlyNetSavingsRollup({
           income: { planned: income.budget, actual: income.actual },
           expenses: { planned: expenses.budget, actual: expenses.actual },
